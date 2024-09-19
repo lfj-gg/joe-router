@@ -70,8 +70,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, type(uint256).max);
         amountOutMin = bound(amountOutMin, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         token0.mint(alice, amountIn);
 
@@ -88,8 +87,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, 100e18);
         amountOutMin = bound(amountOutMin, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         wnative.deposit{value: amountIn}();
         wnative.transfer(alice, amountIn);
@@ -107,8 +105,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, 100e18);
         amountOutMin = bound(amountOutMin, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         payable(alice).transfer(amountIn);
 
@@ -126,8 +123,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, type(uint256).max);
         amountOutMin = bound(amountOutMin, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         token0.mint(alice, amountIn);
 
@@ -147,8 +143,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, type(uint256).max);
         amountOutMin = bound(amountOutMin, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         token0.mint(alice, amountIn);
 
@@ -168,8 +163,7 @@ contract RouterTest is Test {
         amountIn = bound(amountIn, 1, 100e18);
         amountOutMin = bound(amountOutMin, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin);
+        bytes memory routes = abi.encode(amountIn, amountOutMin);
 
         payable(alice).transfer(1e18 + amountIn);
 
@@ -192,8 +186,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, type(uint256).max);
         amountInMax = bound(amountInMax, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         token0.mint(alice, amountInMax);
 
@@ -210,8 +203,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, type(uint256).max);
         amountInMax = bound(amountInMax, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         wnative.deposit{value: amountInMax}();
         wnative.transfer(alice, amountInMax);
@@ -229,8 +221,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, type(uint256).max);
         amountInMax = bound(amountInMax, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         payable(alice).transfer(amountInMax);
 
@@ -248,8 +239,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, 100e18);
         amountInMax = bound(amountInMax, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         token0.mint(alice, amountInMax);
 
@@ -269,8 +259,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, 100e18);
         amountInMax = bound(amountInMax, 1, type(uint256).max);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         token0.mint(alice, amountInMax);
 
@@ -290,8 +279,7 @@ contract RouterTest is Test {
         amountOut = bound(amountOut, 1, 100e18);
         amountInMax = bound(amountInMax, 1, 100e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut);
+        bytes memory routes = abi.encode(amountInMax, amountOut);
 
         payable(alice).transfer(1e18 + amountInMax);
 
@@ -311,24 +299,23 @@ contract RouterTest is Test {
 
     function test_Revert_SwapExactIn() public {
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes[](0));
+        router.swapExactIn(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0));
 
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes[](0));
+        router.swapExactIn(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0));
 
         vm.expectRevert(IRouter.Router__DeadlineExceeded.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes[](0));
+        router.swapExactIn(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
 
         vm.expectRevert(IRouter.Router__ZeroAmountIn.selector);
-        router.swapExactIn(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes[](0));
+        router.swapExactIn(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
 
         token0.mint(alice, 10e18);
 
         wnative.deposit{value: 1e18}();
         wnative.transfer(address(routerLogic), 1e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(10e18, 1e18);
+        bytes memory routes = abi.encode(10e18, 1e18);
 
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
@@ -339,24 +326,23 @@ contract RouterTest is Test {
 
     function test_Revert_SwapExactOut() public {
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes[](0));
+        router.swapExactOut(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0));
 
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes[](0));
+        router.swapExactOut(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0));
 
         vm.expectRevert(IRouter.Router__DeadlineExceeded.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes[](0));
+        router.swapExactOut(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
 
         vm.expectRevert(IRouter.Router__ZeroAmountOut.selector);
-        router.swapExactOut(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes[](0));
+        router.swapExactOut(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
 
         token0.mint(alice, 10e18);
 
         wnative.deposit{value: 1e18}();
         wnative.transfer(address(routerLogic), 1e18);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(10e18, 1e18);
+        bytes memory routes = abi.encode(10e18, 1e18);
 
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
@@ -371,8 +357,7 @@ contract RouterTest is Test {
 
         token0.mint(alice, amountIn);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn + 1, amountOutMin);
+        bytes memory routes = abi.encode(amountIn + 1, amountOutMin);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -380,9 +365,7 @@ contract RouterTest is Test {
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](2);
-        routes[0] = abi.encode(amountIn, amountOutMin);
-        routes[1] = abi.encode(amountIn - 1, amountOutMin);
+        routes = abi.encode(amountIn, amountOutMin, amountIn - 1, amountOutMin);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -390,8 +373,7 @@ contract RouterTest is Test {
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](1);
-        routes[0] = abi.encode(amountIn, amountOutMin - 1);
+        routes = abi.encode(amountIn, amountOutMin - 1);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -401,9 +383,7 @@ contract RouterTest is Test {
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](2);
-        routes[0] = abi.encode(amountIn, amountOutMin - 1);
-        routes[1] = abi.encode(amountIn, amountOutMin);
+        routes = abi.encode(amountIn, amountOutMin - 1, amountIn, amountOutMin);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -427,8 +407,7 @@ contract RouterTest is Test {
 
         token0.mint(alice, amountInMax);
 
-        bytes[] memory routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax + 1, amountOut);
+        bytes memory routes = abi.encode(amountInMax + 1, amountOut);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -438,9 +417,7 @@ contract RouterTest is Test {
         router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](2);
-        routes[0] = abi.encode(amountInMax, amountOut);
-        routes[1] = abi.encode(amountInMax + 1, amountOut);
+        routes = abi.encode(amountInMax, amountOut, amountInMax + 1, amountOut);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -450,8 +427,7 @@ contract RouterTest is Test {
         router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](1);
-        routes[0] = abi.encode(amountInMax, amountOut - 1);
+        routes = abi.encode(amountInMax, amountOut - 1);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -461,9 +437,7 @@ contract RouterTest is Test {
         router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, routes);
         vm.stopPrank();
 
-        routes = new bytes[](2);
-        routes[0] = abi.encode(amountInMax, amountOut - 1);
-        routes[1] = abi.encode(amountInMax, amountOut);
+        routes = abi.encode(amountInMax, amountOut - 1, amountInMax, amountOut);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -481,30 +455,39 @@ contract RouterTest is Test {
 }
 
 contract MockRouterLogic is IRouterLogic {
-    function swapExactIn(address tokenIn, address tokenOut, address from, address to, bytes[] calldata routes)
-        external
-        returns (uint256 totalIn, uint256 totalOut)
-    {
-        (totalIn, totalOut) = abi.decode(routes[0], (uint256, uint256));
+    function swapExactIn(
+        address tokenIn,
+        address tokenOut,
+        address from,
+        address to,
+        uint256,
+        uint256,
+        bytes calldata routes
+    ) external returns (uint256 totalIn, uint256 totalOut) {
+        (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
         IRouter(msg.sender).transfer(tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 
-        if (routes.length > 1) return abi.decode(routes[1], (uint256, uint256));
+        if (routes.length >= 128) return abi.decode(routes[64:], (uint256, uint256));
     }
 
-    function swapExactOut(address tokenIn, address tokenOut, address from, address to, bytes[] calldata routes)
-        external
-        payable
-        returns (uint256 totalIn, uint256 totalOut)
-    {
-        (totalIn, totalOut) = abi.decode(routes[0], (uint256, uint256));
+    function swapExactOut(
+        address tokenIn,
+        address tokenOut,
+        address from,
+        address to,
+        uint256,
+        uint256,
+        bytes calldata routes
+    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+        (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
         IRouter(msg.sender).transfer(tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 
-        if (routes.length > 1) return abi.decode(routes[1], (uint256, uint256));
+        if (routes.length >= 128) return abi.decode(routes[64:], (uint256, uint256));
     }
 }

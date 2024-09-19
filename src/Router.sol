@@ -62,7 +62,7 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        bytes[] calldata routes
+        bytes calldata routes
     ) external payable returns (uint256, uint256) {
         if (to == address(0) || to == address(this)) revert Router__InvalidTo();
         if (block.timestamp > deadline) revert Router__DeadlineExceeded();
@@ -74,7 +74,8 @@ contract Router is Ownable2Step, IRouter {
 
         uint256 balance = _balanceOf(tokenOut, to);
 
-        (uint256 totalIn, uint256 totalOut) = _swapExactIn(tokenIn, tokenOut, msg.sender, to, amountIn, routes);
+        (uint256 totalIn, uint256 totalOut) =
+            _swapExactIn(tokenIn, tokenOut, msg.sender, to, amountIn, amountOutMin, routes);
 
         if (totalIn != amountIn) revert Router__InvalidTotalIn(totalIn, amountIn);
 
@@ -100,7 +101,7 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountInMax,
         address to,
         uint256 deadline,
-        bytes[] calldata routes
+        bytes calldata routes
     ) external payable returns (uint256, uint256) {
         if (to == address(0) || to == address(this)) revert Router__InvalidTo();
         if (block.timestamp > deadline) revert Router__DeadlineExceeded();
@@ -109,7 +110,8 @@ contract Router is Ownable2Step, IRouter {
 
         uint256 balance = _balanceOf(tokenOut, to);
 
-        (uint256 totalIn, uint256 totalOut) = _swapExactOut(tokenIn, tokenOut, amountInMax, msg.sender, to, routes);
+        (uint256 totalIn, uint256 totalOut) =
+            _swapExactOut(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, routes);
 
         if (totalIn > amountInMax) revert Router__MaxAmountInExceeded(totalIn, amountInMax);
 
@@ -150,11 +152,9 @@ contract Router is Ownable2Step, IRouter {
         address from,
         address to,
         uint256 amountIn,
-        bytes[] calldata routes
+        uint256 amountOutMin,
+        bytes calldata routes
     ) internal returns (uint256 totalIn, uint256 totalOut) {
-        address logic = _logic;
-        if (logic == address(0)) revert Router__LogicNotSet();
-
         address recipient;
         (recipient, tokenOut) = tokenOut == address(0) ? (address(this), WNATIVE) : (to, tokenOut);
 
@@ -164,13 +164,7 @@ contract Router is Ownable2Step, IRouter {
             _wrap(amountIn);
         }
 
-        bytes32 key = _getKey(tokenIn, logic, from);
-
-        _allowances[key] = amountIn;
-
-        (totalIn, totalOut) = IRouterLogic(logic).swapExactIn(tokenIn, tokenOut, from, recipient, routes);
-
-        _allowances[key] = 0;
+        (totalIn, totalOut) = _swap(tokenIn, tokenOut, from, recipient, amountIn, amountOutMin, routes, true);
 
         if (recipient == address(this)) {
             _unwrap(totalOut);
@@ -182,30 +176,71 @@ contract Router is Ownable2Step, IRouter {
         address tokenIn,
         address tokenOut,
         uint256 amountInMax,
+        uint256 amountOut,
         address from,
         address to,
-        bytes[] calldata routes
+        bytes calldata routes
     ) internal returns (uint256 totalIn, uint256 totalOut) {
-        address logic = _logic;
-        if (logic == address(0)) revert Router__LogicNotSet();
-
         address recipient;
         (recipient, tokenOut) = tokenOut == address(0) ? (address(this), WNATIVE) : (to, tokenOut);
 
         if (tokenIn == address(0)) from = address(this);
 
-        bytes32 key = _getKey(tokenIn, logic, from);
-
-        _allowances[key] = amountInMax;
-
-        (totalIn, totalOut) = IRouterLogic(logic).swapExactOut(tokenIn, tokenOut, from, recipient, routes);
-
-        _allowances[key] = 0;
+        (totalIn, totalOut) = _swap(tokenIn, tokenOut, from, recipient, amountInMax, amountOut, routes, false);
 
         if (recipient == address(this)) {
             _unwrap(totalOut);
             _transferNative(to, totalOut);
         }
+    }
+
+    function _swap(
+        address tokenIn,
+        address tokenOut,
+        address from,
+        address to,
+        uint256 amountIn,
+        uint256 amountOut,
+        bytes calldata routes,
+        bool exactIn
+    ) internal returns (uint256 totalIn, uint256 totalOut) {
+        address logic = _logic;
+        if (logic == address(0)) revert Router__LogicNotSet();
+
+        bytes32 key = _getKey(tokenIn, logic, from);
+
+        _allowances[key] = amountIn;
+
+        uint256 length = 256 + routes.length; // 32 * 6 + 32 + 32 + routes.length
+        bytes memory data = new bytes(length);
+
+        assembly {
+            switch exactIn
+            case 1 { mstore(data, 0xb69ca0d9) }
+            default { mstore(data, 0x728fea6b) }
+
+            mstore(add(data, 32), tokenIn)
+            mstore(add(data, 64), tokenOut)
+            mstore(add(data, 96), from)
+            mstore(add(data, 128), to)
+            mstore(add(data, 160), amountIn)
+            mstore(add(data, 192), amountOut)
+            mstore(add(data, 224), 224) // 32 * 6 + 32
+            mstore(add(data, 256), routes.length)
+            calldatacopy(add(data, 288), routes.offset, routes.length)
+
+            switch call(gas(), logic, 0, add(data, 28), add(length, 4), 0, 64)
+            case 0 {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+            default {
+                totalIn := mload(0)
+                totalOut := mload(32)
+            }
+        }
+
+        _allowances[key] = 0;
     }
 
     function _balanceOf(address token, address user) internal view returns (uint256) {

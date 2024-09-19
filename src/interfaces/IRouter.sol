@@ -32,7 +32,7 @@ interface IRouter {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        bytes[] memory routes
+        bytes memory routes
     ) external payable returns (uint256, uint256);
     function swapExactOut(
         address tokenIn,
@@ -41,7 +41,7 @@ interface IRouter {
         uint256 amountInMax,
         address to,
         uint256 deadline,
-        bytes[] memory routes
+        bytes memory routes
     ) external payable returns (uint256, uint256);
     function transfer(address token, address from, address to, uint256 amount) external returns (address);
 }
