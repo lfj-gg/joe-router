@@ -12,16 +12,6 @@ import {IRouterLogic} from "./interfaces/IRouterLogic.sol";
 contract RouterLogic is RouterAdapter, IRouterLogic {
     using SafeERC20 for IERC20;
 
-    error RouterLogic__OnlyRouter();
-    error RouterLogic__InvalidTokenIn();
-    error RouterLogic__InvalidTokenOut();
-    error RouterLogic__ExcessBalanceUnused();
-    error RouterLogic__InvalidAmount();
-    error RouterLogic__ZeroSwap();
-    error RouterLogic__InsufficientTokens();
-    error RouterLogic__ExceedsMaxAmountIn();
-    error RouterLogic__InsufficientAmountOut(uint256 amountOut, uint256 amountOutMin);
-
     address private immutable _router;
 
     uint256 internal constant BPS = 10000;
@@ -76,22 +66,41 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     ) external payable returns (uint256 totalIn, uint256 totalOut) {
         (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(routes, tokenIn, tokenOut);
 
-        (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(routes, ptr, nbTokens, nbSwaps, amountOut);
+        if (PackedRoute.isTransferTax(routes)) revert RouterLogic__TransferTaxNotSupported();
 
-        if (amountIn > amountInMax) revert RouterLogic__ExceedsMaxAmountIn();
+        (uint256 amountIn, uint256[] memory amountsIn) =
+            _getAmountsIn(routes, routes.length, nbTokens, nbSwaps, amountOut);
 
-        ptr = routes.length;
+        if (amountIn > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountIn, amountInMax);
 
         bytes32 value;
         address from_ = from;
         address to_ = to;
-        while (nbSwaps > 0) {
-            (ptr, value) = PackedRoute.previous(routes, ptr);
+        for (uint256 i; i < nbSwaps; i++) {
+            (ptr, value) = PackedRoute.next(routes, ptr);
 
-            _swapExactOutSingle(routes, nbTokens, from_, to_, value, amountsIn[--nbSwaps]);
+            _swapExactOutSingle(routes, nbTokens, from_, to_, value, amountsIn[i]);
         }
 
         return (amountIn, amountOut);
+    }
+
+    function _checkAmount(uint256 amount) private pure {
+        if (amount == 0 || amount > type(uint128).max) revert RouterLogic__InvalidAmount();
+    }
+
+    function _balanceOf(address token, address account) private view returns (uint256 amount) {
+        uint256 success;
+
+        assembly {
+            mstore(0, 0x70a08231) // balanceOf(address)
+            mstore(32, account)
+
+            success := staticcall(gas(), token, 28, 36, 0, 32)
+
+            success := and(success, gt(returndatasize(), 31))
+            amount := mload(0)
+        }
     }
 
     function _startAndVerify(bytes calldata routes, address tokenIn, address tokenOut)
@@ -121,8 +130,8 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         uint256 total = amountOut;
 
         bytes32 value;
-        for (uint256 i; i < nbSwaps; i++) {
-            (ptr, value) = PackedRoute.next(routes, ptr);
+        for (uint256 i = nbSwaps; i > 0;) {
+            (ptr, value) = PackedRoute.previous(routes, ptr);
 
             (address pair, uint256 percent, uint256 flags, uint256 tokenOutId, uint256 tokenInId) =
                 PackedRoute.decode(value);
@@ -130,10 +139,12 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             uint256 amount = balance[tokenInId] * percent / BPS;
             balance[tokenInId] -= amount;
 
+            _checkAmount(amount);
             amountIn = _getAmountIn(pair, flags, amount);
             balance[tokenOutId] += amountIn;
+            _checkAmount(amountIn);
 
-            amountsIn[i] = amountIn;
+            amountsIn[--i] = amountIn;
 
             unchecked {
                 total += amountIn - amount;
@@ -164,7 +175,9 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
         address recipient = tokenOutId == balance.length - 1 ? to : address(this);
 
+        _checkAmount(actualAmountIn);
         uint256 amountOut = _swap(pair, tokenIn, actualAmountIn, recipient, flags);
+        _checkAmount(amountOut);
 
         balance[tokenOutId] += amountOut;
 
@@ -188,25 +201,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
         address recipient = tokenOutId == nbTokens - 1 ? to : address(this);
 
-        _swap(pair, tokenIn, actualAmountIn, recipient, flags); // todo try to find a way for dust somehow
-    }
-
-    function _checkAmount(uint256 amount) private pure {
-        if (amount == 0 || amount > type(uint128).max) revert RouterLogic__InvalidAmount();
-    }
-
-    function _balanceOf(address token, address account) private view returns (uint256 amount) {
-        uint256 success;
-
-        assembly {
-            mstore(0, 0x70a08231) // balanceOf(address)
-            mstore(32, account)
-
-            success := staticcall(gas(), token, 28, 36, 0, 32)
-
-            success := and(success, gt(returndatasize(), 31))
-            amount := mload(0)
-        }
+        _swap(pair, tokenIn, actualAmountIn, recipient, flags);
     }
 
     function _transfer(bytes calldata routes, uint256 tokenId, address from, address to, uint256 amount)
@@ -217,10 +212,9 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
         if (tokenId == 0) {
             bool isTransferTax = PackedRoute.isTransferTax(routes);
+
             uint256 balance = isTransferTax ? _balanceOf(token, to) : 0;
-
-            token = IRouter(_router).transfer(token, from, to, amount);
-
+            IRouter(_router).transfer(token, from, to, amount);
             amount = isTransferTax ? _balanceOf(token, to) - balance : amount;
         } else if (to != address(this)) {
             IERC20(token).safeTransfer(to, amount);

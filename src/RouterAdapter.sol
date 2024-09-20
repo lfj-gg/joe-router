@@ -90,7 +90,7 @@ abstract contract RouterAdapter {
         IV1Pair(pair).swap(amount0, amount1, recipient, new bytes(0));
     }
 
-    /* Legacy LB */
+    /* Legacy LB v2.0 */
 
     function _getAmountInLegacyLB(address pair, uint256 flags, uint256 amountOut)
         internal
@@ -127,14 +127,14 @@ abstract contract RouterAdapter {
     function _getAmountInUV3(address pair, uint256 flags, uint256 amountOut) internal returns (uint256 amountIn) {
         bool zeroForOne = Flags.zeroForOne(flags);
 
-        try IUniswapV3Pool(pair).swap(
-            address(this),
-            zeroForOne,
-            -int256(amountOut),
-            zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3,
-            new bytes(0)
-        ) {} catch (bytes memory reason) {
-            if (reason.length != 68) revert RouterAdapter__InvalidRevertReason();
+        uint160 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3;
+
+        try IUniswapV3Pool(pair).swap(address(this), zeroForOne, -int256(amountOut), priceLimit, new bytes(0)) {
+            revert RouterAdapter__InvalidRevertReason();
+        } catch (bytes memory reason) {
+            if (reason.length != 68 || bytes4(reason) != RouterAdapter__UniswapV3SwapCallbackOnly.selector) {
+                revert RouterAdapter__InvalidRevertReason();
+            }
 
             assembly {
                 switch zeroForOne
@@ -150,15 +150,12 @@ abstract contract RouterAdapter {
     {
         bool zeroForOne = Flags.zeroForOne(flags);
 
+        uint160 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3;
+
         _callback = pair;
 
-        (int256 amount0, int256 amount1) = IUniswapV3Pool(pair).swap(
-            recipient,
-            zeroForOne,
-            int256(amountIn),
-            zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3,
-            abi.encodePacked(tokenIn)
-        );
+        (int256 amount0, int256 amount1) =
+            IUniswapV3Pool(pair).swap(recipient, zeroForOne, int256(amountIn), priceLimit, abi.encodePacked(tokenIn));
 
         return uint256(-(zeroForOne ? amount1 : amount0));
     }
