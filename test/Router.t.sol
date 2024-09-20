@@ -57,13 +57,13 @@ contract RouterTest is Test {
     }
 
     function test_Fuzz_Revert_Transfer(address token, address from, address to, uint256 amount) public {
-        vm.expectRevert(IRouter.Router__ZeroAmount.selector);
-        router.transfer(token, from, to, 0);
+        vm.expectRevert(RouterLib.RouterLib__ZeroAmount.selector);
+        TokenLib.routerTransfer(address(router), token, from, to, 0);
 
         amount = bound(amount, 1, type(uint256).max);
 
-        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__InsufficientAllowance.selector, 0, amount));
-        router.transfer(token, from, to, amount);
+        vm.expectRevert(abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, 0, amount));
+        TokenLib.routerTransfer(address(router), token, from, to, amount);
     }
 
     function test_Fuzz_SwapExactInTokenToToken(uint256 amountIn, uint256 amountOutMin) public {
@@ -280,7 +280,7 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
-        vm.expectRevert(IRouter.Router__NativeTransferFailed.selector);
+        vm.expectRevert(TokenLib.TokenLib__NativeTransferFailed.selector);
         router.swapExactIn(address(token0), address(0), 10e18, 1e18, address(this), block.timestamp, routes);
         vm.stopPrank();
     }
@@ -313,7 +313,7 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
-        vm.expectRevert(IRouter.Router__NativeTransferFailed.selector);
+        vm.expectRevert(TokenLib.TokenLib__NativeTransferFailed.selector);
         router.swapExactOut(address(token0), address(0), 1e18, 10e18, address(this), block.timestamp, routes);
         vm.stopPrank();
     }
@@ -328,7 +328,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
-        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__InsufficientAllowance.selector, amountIn, amountIn + 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, amountIn, amountIn + 1)
+        );
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, routes);
         vm.stopPrank();
 
@@ -364,7 +366,7 @@ contract RouterTest is Test {
 
         router.updateRouterLogic(address(0));
 
-        vm.expectRevert(IRouter.Router__LogicNotSet.selector);
+        vm.expectRevert(RouterLib.RouterLib__LogicNotSet.selector);
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, routes);
     }
 
@@ -379,7 +381,7 @@ contract RouterTest is Test {
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
         vm.expectRevert(
-            abi.encodeWithSelector(IRouter.Router__InsufficientAllowance.selector, amountInMax, amountInMax + 1)
+            abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, amountInMax, amountInMax + 1)
         );
         router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, routes);
         vm.stopPrank();
@@ -416,7 +418,7 @@ contract RouterTest is Test {
 
         router.updateRouterLogic(address(0));
 
-        vm.expectRevert(IRouter.Router__LogicNotSet.selector);
+        vm.expectRevert(RouterLib.RouterLib__LogicNotSet.selector);
         router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, routes);
     }
 }
@@ -433,7 +435,7 @@ contract MockRouterLogic is IRouterLogic {
     ) external returns (uint256 totalIn, uint256 totalOut) {
         (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
-        IRouter(msg.sender).transfer(tokenIn, from, address(this), totalIn);
+        TokenLib.routerTransfer(msg.sender, tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 
@@ -451,7 +453,7 @@ contract MockRouterLogic is IRouterLogic {
     ) external payable returns (uint256 totalIn, uint256 totalOut) {
         (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
-        IRouter(msg.sender).transfer(tokenIn, from, address(this), totalIn);
+        TokenLib.routerTransfer(msg.sender, tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 

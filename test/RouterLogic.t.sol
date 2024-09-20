@@ -26,10 +26,6 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
     bytes public revertData;
 
-    function transfer(address token, address, address to, uint256 amount) external {
-        MockERC20(token).transfer(to, amount);
-    }
-
     function getSwapIn(address pair, uint256 amountOut, bool swapForY) external view returns (uint256, uint256) {
         (uint256 amountIn, uint256 amountLeft,) = MockLBPair(pair).getSwapIn(uint128(amountOut), swapForY);
         return (amountIn, amountOut - amountLeft);
@@ -43,10 +39,30 @@ contract RouterLogicTest is Test, PackedRouteHelper {
             }
         }
 
-        data = abi.encode(1, 1, 1, 1);
+        uint256 cdatasize;
 
         assembly {
-            return(add(data, 32), mload(data))
+            cdatasize := calldatasize()
+        }
+
+        if (cdatasize == 92) {
+            address token;
+            address to;
+            uint256 amount;
+
+            assembly {
+                token := shr(96, calldataload(0))
+                to := shr(96, calldataload(40))
+                amount := calldataload(60)
+            }
+
+            MockERC20(token).transfer(to, amount);
+        } else {
+            data = abi.encode(1e18, 1e18);
+
+            assembly {
+                return(add(data, 32), mload(data))
+            }
         }
     }
 

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {TokenLib} from "./libraries/TokenLib.sol";
 import {RouterAdapter} from "./RouterAdapter.sol";
 import {PackedRoute} from "./libraries/PackedRoute.sol";
 import {Flags} from "./libraries/Flags.sol";
@@ -87,20 +88,6 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
     function _checkAmount(uint256 amount) private pure {
         if (amount == 0 || amount > type(uint128).max) revert RouterLogic__InvalidAmount();
-    }
-
-    function _balanceOf(address token, address account) private view returns (uint256 amount) {
-        uint256 success;
-
-        assembly {
-            mstore(0, 0x70a08231) // balanceOf(address)
-            mstore(32, account)
-
-            success := staticcall(gas(), token, 28, 36, 0, 32)
-
-            success := and(success, gt(returndatasize(), 31))
-            amount := mload(0)
-        }
     }
 
     function _startAndVerify(bytes calldata routes, address tokenIn, address tokenOut)
@@ -213,11 +200,11 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         if (tokenId == 0) {
             bool isTransferTax = PackedRoute.isTransferTax(routes);
 
-            uint256 balance = isTransferTax ? _balanceOf(token, to) : 0;
-            IRouter(_router).transfer(token, from, to, amount);
-            amount = isTransferTax ? _balanceOf(token, to) - balance : amount;
+            uint256 balance = isTransferTax ? TokenLib.balanceOf(token, to) : 0;
+            TokenLib.routerTransfer(_router, token, from, to, amount);
+            amount = isTransferTax ? TokenLib.balanceOf(token, to) - balance : amount;
         } else if (to != address(this)) {
-            IERC20(token).safeTransfer(to, amount);
+            TokenLib.transfer(token, to, amount);
         }
 
         return (token, amount);

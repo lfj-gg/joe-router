@@ -3,14 +3,11 @@ pragma solidity ^0.8.20;
 
 interface IRouter {
     error Router__DeadlineExceeded();
-    error Router__LogicNotSet();
-    error Router__InsufficientAllowance(uint256 allowance, uint256 amount);
     error Router__InsufficientOutputAmount(uint256 outputAmount, uint256 minOutputAmount);
     error Router__InsufficientAmountReceived(uint256 balanceBefore, uint256 balanceAfter, uint256 amountOutMin);
     error Router__InvalidTotalIn(uint256 amountIn, uint256 expectedAmountIn);
     error Router__MaxAmountInExceeded(uint256 amountIn, uint256 maxAmountIn);
     error Router__InvalidTo();
-    error Router__NativeTransferFailed();
     error Router__ZeroAmount();
     error Router__OnlyWnative();
     error Router__InvalidWnative();
@@ -61,5 +58,4 @@ interface IRouter {
         bool exactIn,
         bytes calldata route
     ) external payable;
-    function transfer(address token, address from, address to, uint256 amount) external;
 }
