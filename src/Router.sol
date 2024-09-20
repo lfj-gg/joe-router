@@ -22,6 +22,8 @@ contract Router is Ownable2Step, IRouter {
     }
 
     constructor(address wnative, address initialOwner) Ownable(initialOwner) {
+        if (address(wnative).code.length == 0) revert Router__InvalidWnative();
+
         WNATIVE = wnative;
     }
 
@@ -29,7 +31,7 @@ contract Router is Ownable2Step, IRouter {
         return _logic;
     }
 
-    function transfer(address token, address from, address to, uint256 amount) external returns (address) {
+    function transfer(address token, address from, address to, uint256 amount) external {
         if (amount == 0) revert Router__ZeroAmount();
 
         bytes32 key = _getKey(token, msg.sender, from);
@@ -41,18 +43,9 @@ contract Router is Ownable2Step, IRouter {
             _allowances[key] = allowance - amount;
         }
 
-        if (token == address(0)) {
-            from = address(this);
-            token = WNATIVE;
-
-            _wrap(amount);
-        }
-
         from == address(this)
             ? IERC20(token).safeTransfer(to, amount)
             : IERC20(token).safeTransferFrom(from, to, amount);
-
-        return token;
     }
 
     function swapExactIn(
@@ -63,36 +56,14 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata routes
-    ) external payable returns (uint256, uint256) {
-        if (to == address(0) || to == address(this)) revert Router__InvalidTo();
-        if (block.timestamp > deadline) revert Router__DeadlineExceeded();
+    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+        if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : IERC20(tokenIn).balanceOf(msg.sender);
+        _verifyParameters(tokenIn, tokenOut, amountIn, to, deadline);
 
-        if (amountIn == 0) {
-            amountIn = tokenIn == address(0) ? msg.value : IERC20(tokenIn).balanceOf(msg.sender);
-            if (amountIn == 0) revert Router__ZeroAmountIn();
-        }
-
-        uint256 balance = _balanceOf(tokenOut, to);
-
-        (uint256 totalIn, uint256 totalOut) =
-            _swapExactIn(tokenIn, tokenOut, msg.sender, to, amountIn, amountOutMin, routes);
-
-        if (totalIn != amountIn) revert Router__InvalidTotalIn(totalIn, amountIn);
-
-        _verify(tokenOut, to, balance, amountOutMin, totalOut);
+        (totalIn, totalOut) = _swapExact(tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, routes, true);
 
         emit SwapExactIn(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
-
-        if (tokenIn == address(0)) {
-            uint256 refund = msg.value - totalIn;
-            if (refund > 0) _transferNative(msg.sender, refund);
-        }
-
-        return (totalIn, totalOut);
     }
-
-    // TODO Add swap supporting fee on transfer tokens
-    // TODO Add simulate and batchSimulate functions
 
     function swapExactOut(
         address tokenIn,
@@ -102,29 +73,56 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata routes
-    ) external payable returns (uint256, uint256) {
-        if (to == address(0) || to == address(this)) revert Router__InvalidTo();
-        if (block.timestamp > deadline) revert Router__DeadlineExceeded();
+    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+        _verifyParameters(tokenIn, tokenOut, amountOut, to, deadline);
 
-        if (amountOut == 0) revert Router__ZeroAmountOut();
-
-        uint256 balance = _balanceOf(tokenOut, to);
-
-        (uint256 totalIn, uint256 totalOut) =
-            _swapExactOut(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, routes);
-
-        if (totalIn > amountInMax) revert Router__MaxAmountInExceeded(totalIn, amountInMax);
-
-        _verify(tokenOut, to, balance, amountOut, totalOut);
+        (totalIn, totalOut) = _swapExact(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, routes, false);
 
         emit SwapExactOut(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
+    }
 
-        if (tokenIn == address(0)) {
-            uint256 refund = msg.value - totalIn;
-            if (refund > 0) _transferNative(msg.sender, refund);
+    function simulate(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bool exactIn,
+        bytes[] calldata multiRoutes
+    ) external payable {
+        uint256 length = multiRoutes.length;
+
+        uint256[] memory amounts = new uint256[](length);
+        for (uint256 i; i < length;) {
+            (, bytes memory data) = address(this).delegatecall(
+                abi.encodeWithSelector(
+                    IRouter.simulateSingle.selector, tokenIn, tokenOut, amountIn, amountOut, exactIn, multiRoutes[i++]
+                )
+            );
+
+            if (bytes4(data) == IRouter.Router__SimulateSingle.selector) {
+                assembly {
+                    mstore(add(amounts, mul(i, 32)), mload(add(data, 36)))
+                }
+            } else {
+                amounts[i - 1] = exactIn ? 0 : type(uint256).max;
+            }
         }
 
-        return (totalIn, totalOut);
+        revert Router__Simulations(amounts);
+    }
+
+    function simulateSingle(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bool exactIn,
+        bytes calldata routes
+    ) external payable {
+        (uint256 totalIn, uint256 totalOut) =
+            _swapExact(tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, routes, exactIn);
+
+        revert Router__SimulateSingle(exactIn ? totalOut : totalIn);
     }
 
     function updateRouterLogic(address logic) external onlyOwner {
@@ -133,9 +131,20 @@ contract Router is Ownable2Step, IRouter {
         emit RouterLogicUpdated(logic);
     }
 
-    function _verify(address tokenOut, address to, uint256 balance, uint256 amountOutMin, uint256 amountOut)
+    function _verifyParameters(address tokenIn, address tokenOut, uint256 amount, address to, uint256 deadline)
         internal
         view
+    {
+        if (to == address(0) || to == address(this)) revert Router__InvalidTo();
+        if (block.timestamp > deadline) revert Router__DeadlineExceeded();
+        if (tokenIn == tokenOut) revert Router__IdenticalTokens();
+        if (amount == 0) revert Router__ZeroAmount();
+    }
+
+    function _verifySwap(address tokenOut, address to, uint256 balance, uint256 amountOutMin, uint256 amountOut)
+        internal
+        view
+        returns (uint256)
     {
         if (amountOut < amountOutMin) revert Router__InsufficientOutputAmount(amountOut, amountOutMin);
 
@@ -144,17 +153,24 @@ contract Router is Ownable2Step, IRouter {
         if (balanceAfter < balance + amountOutMin) {
             revert Router__InsufficientAmountReceived(balance, balanceAfter, amountOutMin);
         }
+
+        unchecked {
+            return balanceAfter - balance;
+        }
     }
 
-    function _swapExactIn(
+    function _swapExact(
         address tokenIn,
         address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
         address from,
         address to,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        bytes calldata routes
+        bytes calldata routes,
+        bool exactIn
     ) internal returns (uint256 totalIn, uint256 totalOut) {
+        uint256 balance = _balanceOf(tokenOut, to);
+
         address recipient;
         (recipient, tokenOut) = tokenOut == address(0) ? (address(this), WNATIVE) : (to, tokenOut);
 
@@ -164,43 +180,45 @@ contract Router is Ownable2Step, IRouter {
             _wrap(amountIn);
         }
 
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, from, recipient, amountIn, amountOutMin, routes, true);
+        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountIn, amountOut, from, recipient, routes, exactIn);
 
-        if (recipient == address(this)) {
-            _unwrap(totalOut);
-            _transferNative(to, totalOut);
+        if (exactIn) {
+            if (totalIn != amountIn) revert Router__InvalidTotalIn(totalIn, amountIn);
+        } else {
+            if (totalIn > amountIn) revert Router__MaxAmountInExceeded(totalIn, amountIn);
         }
-    }
-
-    function _swapExactOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountInMax,
-        uint256 amountOut,
-        address from,
-        address to,
-        bytes calldata routes
-    ) internal returns (uint256 totalIn, uint256 totalOut) {
-        address recipient;
-        (recipient, tokenOut) = tokenOut == address(0) ? (address(this), WNATIVE) : (to, tokenOut);
-
-        if (tokenIn == address(0)) from = address(this);
-
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, from, recipient, amountInMax, amountOut, routes, false);
 
         if (recipient == address(this)) {
             _unwrap(totalOut);
             _transferNative(to, totalOut);
+
+            totalOut = _verifySwap(address(0), to, balance, amountOut, totalOut);
+        } else {
+            totalOut = _verifySwap(tokenOut, to, balance, amountOut, totalOut);
+        }
+
+        unchecked {
+            uint256 refund;
+            if (from == address(this)) {
+                uint256 unwrap = amountIn - totalIn;
+                if (unwrap > 0) _unwrap(unwrap);
+
+                refund = msg.value + unwrap - amountIn;
+            } else {
+                refund = msg.value;
+            }
+
+            if (refund > 0) _transferNative(msg.sender, refund);
         }
     }
 
     function _swap(
         address tokenIn,
         address tokenOut,
-        address from,
-        address to,
         uint256 amountIn,
         uint256 amountOut,
+        address from,
+        address to,
         bytes calldata routes,
         bool exactIn
     ) internal returns (uint256 totalIn, uint256 totalOut) {

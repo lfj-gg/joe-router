@@ -2,6 +2,17 @@
 pragma solidity ^0.8.20;
 
 interface IRouterLogic {
+    error RouterLogic__OnlyRouter();
+    error RouterLogic__InvalidTokenIn();
+    error RouterLogic__InvalidTokenOut();
+    error RouterLogic__ExcessBalanceUnused();
+    error RouterLogic__InvalidAmount();
+    error RouterLogic__ZeroSwap();
+    error RouterLogic__InsufficientTokens();
+    error RouterLogic__ExceedsMaxAmountIn(uint256 amountIn, uint256 amountInMax);
+    error RouterLogic__InsufficientAmountOut(uint256 amountOut, uint256 amountOutMin);
+    error RouterLogic__TransferTaxNotSupported();
+
     function swapExactIn(
         address tokenIn,
         address tokenOut,

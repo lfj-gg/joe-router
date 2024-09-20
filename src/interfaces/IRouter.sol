@@ -11,10 +11,12 @@ interface IRouter {
     error Router__MaxAmountInExceeded(uint256 amountIn, uint256 maxAmountIn);
     error Router__InvalidTo();
     error Router__NativeTransferFailed();
-    error Router__ZeroAmountIn();
-    error Router__ZeroAmountOut();
     error Router__ZeroAmount();
     error Router__OnlyWnative();
+    error Router__InvalidWnative();
+    error Router__IdenticalTokens();
+    error Router__Simulations(uint256[] amounts);
+    error Router__SimulateSingle(uint256 amount);
 
     event SwapExactIn(
         address indexed sender, address to, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut
@@ -43,5 +45,21 @@ interface IRouter {
         uint256 deadline,
         bytes memory routes
     ) external payable returns (uint256, uint256);
-    function transfer(address token, address from, address to, uint256 amount) external returns (address);
+    function simulate(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bool exactIn,
+        bytes[] calldata routes
+    ) external payable;
+    function simulateSingle(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bool exactIn,
+        bytes calldata route
+    ) external payable;
+    function transfer(address token, address from, address to, uint256 amount) external;
 }
