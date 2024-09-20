@@ -95,25 +95,25 @@ contract PackedRouteTest is Test {
     function _nextPrevious(address[] calldata tokens, bytes26[] calldata details, bytes calldata route) public pure {
         (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = PackedRoute.start(route);
 
-        assertEq(nbTokens, tokens.length, "test_Fuzz_NextPrevious::1");
-        assertEq(nbSwaps, details.length, "test_Fuzz_NextPrevious::2");
-        assertEq(ptr, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens, "test_Fuzz_NextPrevious::1");
+        assertEq(nbTokens, tokens.length, "_nextPrevious::1");
+        assertEq(nbSwaps, details.length, "_nextPrevious::2");
+        assertEq(ptr, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens, "_nextPrevious::3");
 
         uint256 startPtr = ptr;
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            assertEq(PackedRoute.token(route, i), tokens[i], "test_Fuzz_NextPrevious::3");
+            assertEq(PackedRoute.token(route, i), tokens[i], "_nextPrevious::4");
         }
 
         bytes32 value;
         for (uint256 i = 0; i < details.length; i++) {
             (ptr, value) = PackedRoute.next(route, ptr);
 
-            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i + 1), "test_Fuzz_NextPrevious::4");
+            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i + 1), "_nextPrevious::5");
             assertEq(
                 value & 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000,
                 details[i],
-                "test_Fuzz_NextPrevious::5"
+                "_nextPrevious::6"
             );
 
             (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
@@ -121,21 +121,21 @@ contract PackedRouteTest is Test {
 
             uint256 detail = uint256(bytes32(details[i]));
 
-            assertEq(pair, address(uint160(detail >> 96)), "test_Fuzz_NextPrevious::6");
-            assertEq(percent, uint16(detail >> 80), "test_Fuzz_NextPrevious::7");
-            assertEq(flags, uint16(detail >> 64), "test_Fuzz_NextPrevious::8");
-            assertEq(tokenInId, uint8(detail >> 56), "test_Fuzz_NextPrevious::9");
-            assertEq(tokenOutId, uint8(detail >> 48), "test_Fuzz_NextPrevious::10");
+            assertEq(pair, address(uint160(detail >> 96)), "_nextPrevious::7");
+            assertEq(percent, uint16(detail >> 80), "_nextPrevious::8");
+            assertEq(flags, uint16(detail >> 64), "_nextPrevious::9");
+            assertEq(tokenInId, uint8(detail >> 56), "_nextPrevious::10");
+            assertEq(tokenOutId, uint8(detail >> 48), "_nextPrevious::11");
         }
 
         for (uint256 i = details.length; i > 0; i--) {
             (ptr, value) = PackedRoute.previous(route, ptr);
 
-            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i - 1), "test_Fuzz_NextPrevious::11");
+            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i - 1), "_nextPrevious::12");
             assertEq(
                 value & 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000,
                 details[i - 1],
-                "test_Fuzz_NextPrevious::12"
+                "_nextPrevious::13"
             );
 
             (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
@@ -143,16 +143,18 @@ contract PackedRouteTest is Test {
 
             uint256 detail = uint256(bytes32(details[i - 1]));
 
-            assertEq(pair, address(uint160(detail >> 96)), "test_Fuzz_NextPrevious::13");
-            assertEq(percent, uint16(detail >> 80), "test_Fuzz_NextPrevious::14");
-            assertEq(flags, uint16(detail >> 64), "test_Fuzz_NextPrevious::15");
-            assertEq(tokenInId, uint8(detail >> 56), "test_Fuzz_NextPrevious::16");
-            assertEq(tokenOutId, uint8(detail >> 48), "test_Fuzz_NextPrevious::17");
+            assertEq(pair, address(uint160(detail >> 96)), "_nextPrevious::14");
+            assertEq(percent, uint16(detail >> 80), "_nextPrevious::15");
+            assertEq(flags, uint16(detail >> 64), "_nextPrevious::16");
+            assertEq(tokenInId, uint8(detail >> 56), "_nextPrevious::17");
+            assertEq(tokenOutId, uint8(detail >> 48), "_nextPrevious::18");
         }
     }
 }
 
 contract PackedRouteLib {
+    function test() public pure {} // To avoid this contract to be included in coverage
+
     function token(bytes calldata route, uint256 id) external pure returns (address t) {
         return PackedRoute.token(route, id);
     }
