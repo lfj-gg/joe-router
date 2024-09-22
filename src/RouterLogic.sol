@@ -18,37 +18,41 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     uint256 internal constant BPS = 10000;
 
     constructor(address router, address routerV2_0) RouterAdapter(routerV2_0) {
+        if (router.code.length == 0) revert RouterLogic__InvalidRouter();
+
         _router = router;
     }
 
     function swapExactIn(
         address tokenIn,
         address tokenOut,
-        address from,
-        address to,
         uint256 amountIn,
         uint256 amountOutMin,
+        address from,
+        address to,
         bytes calldata routes
-    ) external returns (uint256, uint256) {
+    ) external override returns (uint256, uint256) {
         (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(routes, tokenIn, tokenOut);
 
-        uint256[] memory balance = new uint256[](nbTokens);
+        uint256[] memory balances = new uint256[](nbTokens);
 
-        balance[0] = amountIn;
+        balances[0] = amountIn;
         uint256 total = amountIn;
 
-        address from_ = from;
-        address to_ = to;
         bytes32 value;
-        for (uint256 i; i < nbSwaps; i++) {
-            (ptr, value) = PackedRoute.next(routes, ptr);
+        {
+            address from_ = from;
+            address to_ = to;
+            for (uint256 i; i < nbSwaps; i++) {
+                (ptr, value) = PackedRoute.next(routes, ptr);
 
-            unchecked {
-                total += _swapExactInSingle(routes, balance, from_, to_, value);
+                unchecked {
+                    total += _swapExactInSingle(routes, balances, from_, to_, value);
+                }
             }
         }
 
-        uint256 amountOut = balance[nbTokens - 1];
+        uint256 amountOut = balances[nbTokens - 1];
         if (total != amountOut) revert RouterLogic__ExcessBalanceUnused();
 
         if (amountOut < amountOutMin) revert RouterLogic__InsufficientAmountOut(amountOut, amountOutMin);
@@ -59,18 +63,17 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     function swapExactOut(
         address tokenIn,
         address tokenOut,
-        address from,
-        address to,
         uint256 amountInMax,
         uint256 amountOut,
+        address from,
+        address to,
         bytes calldata routes
-    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
         (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(routes, tokenIn, tokenOut);
 
         if (PackedRoute.isTransferTax(routes)) revert RouterLogic__TransferTaxNotSupported();
 
-        (uint256 amountIn, uint256[] memory amountsIn) =
-            _getAmountsIn(routes, routes.length, nbTokens, nbSwaps, amountOut);
+        (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(routes, amountOut, nbTokens, nbSwaps);
 
         if (amountIn > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountIn, amountInMax);
 
@@ -106,14 +109,16 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         if (PackedRoute.token(routes, nbTokens - 1) != tokenOut) revert RouterLogic__InvalidTokenOut();
     }
 
-    function _getAmountsIn(bytes calldata routes, uint256 ptr, uint256 nbTokens, uint256 nbSwaps, uint256 amountOut)
+    function _getAmountsIn(bytes calldata routes, uint256 amountOut, uint256 nbTokens, uint256 nbSwaps)
         private
         returns (uint256 amountIn, uint256[] memory)
     {
-        uint256[] memory amountsIn = new uint256[](nbSwaps);
-        uint256[] memory balance = new uint256[](nbTokens);
+        uint256 ptr = routes.length;
 
-        balance[nbTokens - 1] = amountOut;
+        uint256[] memory amountsIn = new uint256[](nbSwaps);
+        uint256[] memory balances = new uint256[](nbTokens);
+
+        balances[nbTokens - 1] = amountOut;
         uint256 total = amountOut;
 
         bytes32 value;
@@ -123,12 +128,12 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             (address pair, uint256 percent, uint256 flags, uint256 tokenOutId, uint256 tokenInId) =
                 PackedRoute.decode(value);
 
-            uint256 amount = balance[tokenInId] * percent / BPS;
-            balance[tokenInId] -= amount;
+            uint256 amount = balances[tokenInId] * percent / BPS;
+            balances[tokenInId] -= amount;
 
             _checkAmount(amount);
             amountIn = _getAmountIn(pair, flags, amount);
-            balance[tokenOutId] += amountIn;
+            balances[tokenOutId] += amountIn;
             _checkAmount(amountIn);
 
             amountsIn[--i] = amountIn;
@@ -138,7 +143,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             }
         }
 
-        amountIn = balance[0];
+        amountIn = balances[0];
         if (total != amountIn) revert RouterLogic__ExcessBalanceUnused();
 
         return (amountIn, amountsIn);
@@ -146,7 +151,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
     function _swapExactInSingle(
         bytes calldata routes,
-        uint256[] memory balance,
+        uint256[] memory balances,
         address from,
         address to,
         bytes32 value
@@ -154,19 +159,19 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
             PackedRoute.decode(value);
 
-        uint256 amountIn = balance[tokenInId] * percent / BPS;
-        balance[tokenInId] -= amountIn;
+        uint256 amountIn = balances[tokenInId] * percent / BPS;
+        balances[tokenInId] -= amountIn;
 
         (address tokenIn, uint256 actualAmountIn) =
             _transfer(routes, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
 
-        address recipient = tokenOutId == balance.length - 1 ? to : address(this);
+        address recipient = tokenOutId == balances.length - 1 ? to : address(this);
 
         _checkAmount(actualAmountIn);
         uint256 amountOut = _swap(pair, tokenIn, actualAmountIn, recipient, flags);
         _checkAmount(amountOut);
 
-        balance[tokenOutId] += amountOut;
+        balances[tokenOutId] += amountOut;
 
         unchecked {
             return amountOut - amountIn;
@@ -201,7 +206,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             bool isTransferTax = PackedRoute.isTransferTax(routes);
 
             uint256 balance = isTransferTax ? TokenLib.balanceOf(token, to) : 0;
-            TokenLib.routerTransfer(_router, token, from, to, amount);
+            RouterLib.transfer(_router, token, from, to, amount); // todo change name?
             amount = isTransferTax ? TokenLib.balanceOf(token, to) - balance : amount;
         } else if (to != address(this)) {
             TokenLib.transfer(token, to, amount);

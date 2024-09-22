@@ -39,9 +39,12 @@ contract RouterTest is Test {
         vm.label(address(wnative), "WNative");
     }
 
-    function test_Constructor() public view {
+    function test_Constructor() public {
         assertEq(address(router.WNATIVE()), address(wnative), "test_Constructor::1");
         assertEq(router.owner(), address(this), "test_Constructor::2");
+
+        vm.expectRevert(IRouter.Router__InvalidWnative.selector);
+        new Router(address(0), address(this));
     }
 
     function test_Fuzz_UpdateLogic(address logic) public {
@@ -58,12 +61,12 @@ contract RouterTest is Test {
 
     function test_Fuzz_Revert_Transfer(address token, address from, address to, uint256 amount) public {
         vm.expectRevert(RouterLib.RouterLib__ZeroAmount.selector);
-        TokenLib.routerTransfer(address(router), token, from, to, 0);
+        RouterLib.transfer(address(router), token, from, to, 0);
 
         amount = bound(amount, 1, type(uint256).max);
 
         vm.expectRevert(abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, 0, amount));
-        TokenLib.routerTransfer(address(router), token, from, to, amount);
+        RouterLib.transfer(address(router), token, from, to, amount);
     }
 
     function test_Fuzz_SwapExactInTokenToToken(uint256 amountIn, uint256 amountOutMin) public {
@@ -427,15 +430,15 @@ contract MockRouterLogic is IRouterLogic {
     function swapExactIn(
         address tokenIn,
         address tokenOut,
+        uint256,
+        uint256,
         address from,
         address to,
-        uint256,
-        uint256,
         bytes calldata routes
     ) external returns (uint256 totalIn, uint256 totalOut) {
         (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
-        TokenLib.routerTransfer(msg.sender, tokenIn, from, address(this), totalIn);
+        RouterLib.transfer(msg.sender, tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 
@@ -445,15 +448,15 @@ contract MockRouterLogic is IRouterLogic {
     function swapExactOut(
         address tokenIn,
         address tokenOut,
+        uint256,
+        uint256,
         address from,
         address to,
-        uint256,
-        uint256,
         bytes calldata routes
     ) external payable returns (uint256 totalIn, uint256 totalOut) {
         (totalIn, totalOut) = abi.decode(routes, (uint256, uint256));
 
-        TokenLib.routerTransfer(msg.sender, tokenIn, from, address(this), totalIn);
+        RouterLib.transfer(msg.sender, tokenIn, from, address(this), totalIn);
 
         MockERC20(tokenOut).mint(to, totalOut);
 

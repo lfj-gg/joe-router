@@ -61,6 +61,23 @@ library RouterLib {
         from == address(this) ? TokenLib.transfer(token, to, amount) : TokenLib.transferFrom(token, from, to, amount);
     }
 
+    function transfer(address router, address token, address from, address to, uint256 amount) internal {
+        assembly {
+            let m0x40 := mload(0x40)
+
+            mstore(0, shl(96, token))
+            mstore(20, shl(96, from))
+            mstore(40, shl(96, to))
+            mstore(60, amount)
+
+            if iszero(call(gas(), router, 0, 0, 92, 0, 0)) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            mstore(0x40, m0x40)
+        }
+    }
     function swap(
         mapping(bytes32 key => uint256) storage allowances,
         address tokenIn,
@@ -84,15 +101,17 @@ library RouterLib {
             sstore(allowanceSlot, amountIn)
 
             switch exactIn
-            case 1 { mstore(data, 0xb69ca0d9) }
-            default { mstore(data, 0x728fea6b) }
+            // swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, routes)
+            // swapExactOut(tokenIn, tokenOut, amountOut, amountIn, from, to, routes)
+            case 1 { mstore(data, 0xbd084435) }
+            default { mstore(data, 0xcb7e0007) }
 
             mstore(add(data, 32), tokenIn)
             mstore(add(data, 64), tokenOut)
-            mstore(add(data, 96), from)
-            mstore(add(data, 128), to)
-            mstore(add(data, 160), amountIn)
-            mstore(add(data, 192), amountOut)
+            mstore(add(data, 96), amountIn)
+            mstore(add(data, 128), amountOut)
+            mstore(add(data, 160), from)
+            mstore(add(data, 192), to)
             mstore(add(data, 224), 224) // 32 * 6 + 32
             mstore(add(data, 256), routes.length)
             calldatacopy(add(data, 288), routes.offset, routes.length)
