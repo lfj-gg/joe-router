@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {TokenLib} from "./libraries/TokenLib.sol";
+import {RouterLib} from "./libraries/RouterLib.sol";
 import {RouterAdapter} from "./RouterAdapter.sol";
 import {PackedRoute} from "./libraries/PackedRoute.sol";
 import {Flags} from "./libraries/Flags.sol";
