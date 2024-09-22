@@ -333,17 +333,17 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
         _setRoute(route, ptr, address(token0), address(token1), address(this), 1e4, ZERO_FOR_ONE | UV3_ID);
 
-        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        vm.expectRevert(abi.encode(1e18, 1e18));
         routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         revertData = new bytes(1);
 
-        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        vm.expectRevert(revertData);
         routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         revertData = abi.encodeWithSelector(bytes4(0x12345678), int256(0), int256(0));
 
-        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        vm.expectRevert(revertData);
         routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 }

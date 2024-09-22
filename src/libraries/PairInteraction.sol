@@ -8,7 +8,7 @@ library PairInteraction {
     uint256 internal constant MIN_SWAP_SQRT_RATIO_UV3 = 4295128739 + 1;
     uint256 internal constant MAX_SWAP_SQRT_RATIO_UV3 = 1461446703485210103287273052203988822378723970342 - 1;
 
-    function getOrderedReservesUV2(address pair, bool ordered)
+    function getReservesUV2(address pair, bool zeroForOne)
         internal
         view
         returns (uint256 reserveIn, uint256 reserveOut)
@@ -16,11 +16,10 @@ library PairInteraction {
         uint256 returnDataSize;
         assembly {
             mstore(0, 0x0902f1ac) // getReserves()
-            pop(staticcall(gas(), pair, 28, 4, 0, 64))
 
-            returnDataSize := returndatasize()
+            if staticcall(gas(), pair, 28, 4, 0, 64) { returnDataSize := returndatasize() }
 
-            switch ordered
+            switch zeroForOne
             case 0 {
                 reserveIn := and(mload(32), MASK_UINT112)
                 reserveOut := and(mload(0), MASK_UINT112)
@@ -34,6 +33,7 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
+    // DOESNT CHECK THAT TARGET HAS CODE
     function swapUV2(address pair, uint256 amount0, uint256 amount1, address recipient) internal {
         assembly {
             let ptr := mload(0x40)
@@ -107,7 +107,7 @@ library PairInteraction {
             mstore(0x40, m0x40)
         }
 
-        if (returnDataSize < 32) revert PairInteraction__InvalidReturnData();
+        if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
     function getSwapInLB(address pair, uint256 amountOut, bool swapForY)
@@ -169,20 +169,19 @@ library PairInteraction {
     function getSwapInUV3(address pair, bool zeroForOne, uint256 amountOut) internal returns (uint256 amountIn) {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
 
-        uint256 returnDataSize;
-
         assembly {
             // RouterAdapter__UniswapV3SwapCallbackOnly(int256,int256)
-            if and(eq(shr(224, mload(ptr)), 0xcbdb9bb5), iszero(success)) {
-                returnDataSize := returndatasize()
-
+            switch and(eq(shr(224, mload(ptr)), 0xcbdb9bb5), iszero(success))
+            case 0 {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+            default {
                 switch zeroForOne
                 case 1 { amountIn := mload(add(ptr, 4)) }
                 default { amountIn := mload(add(ptr, 36)) }
             }
         }
-
-        if (returnDataSize < 68) revert PairInteraction__InvalidReturnData();
     }
 
     function swapUV3(address pair, address recipient, bool zeroForOne, uint256 amountIn, address tokenIn)
@@ -231,7 +230,7 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 256))
 
-            success := call(gas(), pair, 0, add(ptr, 28), 260, ptr, 68)
+            success := call(gas(), pair, 0, add(ptr, 28), 228, ptr, 68)
         }
     }
 }

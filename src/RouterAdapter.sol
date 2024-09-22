@@ -50,7 +50,7 @@ abstract contract RouterAdapter {
         } else if (id == Flags.TRADERJOE_LB_ID) {
             amountOut = _swapLB(pair, flags, recipient);
         } else if (id == Flags.UNISWAP_V3_ID) {
-            amountOut = _swapUV3(pair, tokenIn, flags, amountIn, recipient);
+            amountOut = _swapUV3(pair, flags, recipient, amountIn, tokenIn);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -59,7 +59,7 @@ abstract contract RouterAdapter {
     /* Uniswap V2 */
 
     function _getAmountInUV2(address pair, uint256 flags, uint256 amountOut) internal view returns (uint256) {
-        (uint256 reserveIn, uint256 reserveOut) = PairInteraction.getOrderedReservesUV2(pair, Flags.zeroForOne(flags));
+        (uint256 reserveIn, uint256 reserveOut) = PairInteraction.getReservesUV2(pair, Flags.zeroForOne(flags));
         return (reserveIn * amountOut * 1000 - 1) / ((reserveOut - amountOut) * 997) + 1;
     }
 
@@ -68,7 +68,7 @@ abstract contract RouterAdapter {
         returns (uint256 amountOut)
     {
         bool ordered = Flags.zeroForOne(flags);
-        (uint256 reserveIn, uint256 reserveOut) = PairInteraction.getOrderedReservesUV2(pair, ordered);
+        (uint256 reserveIn, uint256 reserveOut) = PairInteraction.getReservesUV2(pair, ordered);
 
         uint256 amountInWithFee = amountIn * 997;
         amountOut = (amountInWithFee * reserveOut) / (reserveIn * 1000 + amountInWithFee);
@@ -109,7 +109,7 @@ abstract contract RouterAdapter {
         return PairInteraction.getSwapInUV3(pair, Flags.zeroForOne(flags), amountOut);
     }
 
-    function _swapUV3(address pair, address tokenIn, uint256 flags, uint256 amountIn, address recipient)
+    function _swapUV3(address pair, uint256 flags, address recipient, uint256 amountIn, address tokenIn)
         internal
         returns (uint256 amountOut)
     {
