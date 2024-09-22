@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title V2.1 Pair Interface
+ * @title Liquidity Book Pair Interface
  * @dev Interface of the V2.1 pair contract.
  */
-interface IV2_1Pair {
+interface ILBPair {
     error LBPair__ZeroBorrowAmount();
     error LBPair__AddressZero();
     error LBPair__AlreadyInitialized();

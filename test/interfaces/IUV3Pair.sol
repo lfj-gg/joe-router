@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IUniswapV3Pool {
+interface IUV3Pair {
     event Burn(
         address indexed owner,
         int24 indexed tickLower,

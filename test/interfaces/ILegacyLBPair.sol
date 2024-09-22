@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title V2 Pair Interface
+ * @title Legacy Liquidity Book Pair Interface
  * @dev Interface of the V2 pair contract.
  */
-interface IV2_0Pair {
+interface ILegacyLBPair {
     struct FeeParameters {
         uint16 binStep;
         uint16 baseFactor;

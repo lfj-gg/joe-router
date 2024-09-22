@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title V1 Pair Interface
+ * @title Uniswap V2 Pair Interface
  * @dev Interface of the V1 pair contract.
  */
-interface IV1Pair {
+interface IUV2Pair {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
