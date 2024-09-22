@@ -5,6 +5,16 @@ pragma solidity ^0.8.20;
 // The zeroForOne flag is the first bit of the flags variable
 // The callback flag is the second bit of the flags variable
 // The id is the last 8 bits of the flags variable
+
+/**
+ * @title Flags
+ * @dev Helper library for parsing flags received from a packed route
+ * The flags are a uint16 variable that contains the following information:
+ * - zeroForOne: The first bit of the flags variable (0: false, 1: true)
+ * - callback: The second bit of the flags variable (0: false, 1: true)
+ * - id: The last 8 bits of the flags variable (1-255)
+ * Note that the bits 2-7 are unused for now, and might be used in the future
+ */
 library Flags {
     uint256 internal constant ZERO_FOR_ONE = 1;
     uint256 internal constant CALLBACK = 2;
@@ -17,14 +27,23 @@ library Flags {
     uint256 internal constant TRADERJOE_LB_ID = 3 << 8; // v2.1 and v2.2 have the same ABI for swaps
     uint256 internal constant UNISWAP_V3_ID = 4 << 8;
 
+    /**
+     * @dev Returns the id of the flags variable
+     */
     function id(uint256 flags) internal pure returns (uint256 idx) {
         return flags & ID_MASK;
     }
 
+    /**
+     * @dev Returns whether the zeroForOne flag is set
+     */
     function zeroForOne(uint256 flags) internal pure returns (bool) {
         return flags & ZERO_FOR_ONE == ZERO_FOR_ONE;
     }
 
+    /**
+     * @dev Returns whether the callback flag is set
+     */
     function callback(uint256 flags) internal pure returns (bool) {
         return flags & CALLBACK == CALLBACK;
     }
