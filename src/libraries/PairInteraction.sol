@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title PairInteraction
+ * @dev Library for interacting with Uniswap V2, Trader Joe, and Uniswap V3 pairs.
+ */
 library PairInteraction {
     error PairInteraction__InvalidReturnData();
 
@@ -8,18 +12,23 @@ library PairInteraction {
     uint256 internal constant MIN_SWAP_SQRT_RATIO_UV3 = 4295128739 + 1;
     uint256 internal constant MAX_SWAP_SQRT_RATIO_UV3 = 1461446703485210103287273052203988822378723970342 - 1;
 
-    function getReservesUV2(address pair, bool zeroForOne)
-        internal
-        view
-        returns (uint256 reserveIn, uint256 reserveOut)
-    {
+    /**
+     * @dev Returns the ordered reserves of a Uniswap V2 pair.
+     * If ordered is true, the reserves are returned as (reserve0, reserve1), otherwise as (reserve1, reserve0).
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
+    function getReservesUV2(address pair, bool ordered) internal view returns (uint256 reserveIn, uint256 reserveOut) {
         uint256 returnDataSize;
         assembly {
             mstore(0, 0x0902f1ac) // getReserves()
 
             if staticcall(gas(), pair, 28, 4, 0, 64) { returnDataSize := returndatasize() }
 
-            switch zeroForOne
+            switch ordered
             case 0 {
                 reserveIn := and(mload(32), MASK_UINT112)
                 reserveOut := and(mload(0), MASK_UINT112)
@@ -33,7 +42,13 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
-    // DOESNT CHECK THAT TARGET HAS CODE
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Uniswap V2 pair.
+     * The function doesn't check that the pair has any code, `getReservesUV2` should be called first to ensure that.
+     *
+     * Requirements:
+     * - The call must succeed.
+     */
     function swapUV2(address pair, uint256 amount0, uint256 amount1, address recipient) internal {
         assembly {
             let ptr := mload(0x40)
@@ -54,6 +69,15 @@ library PairInteraction {
         }
     }
 
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe Legacy LB pair.
+     * It uses the router v2.0 helper function `getSwapIn` to get the amount required.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The router must have code.
+     * - The return data must be at least 32 bytes.
+     */
     function getSwapInLegacyLB(address router, address pair, uint256 amountOut, bool swapForY)
         internal
         view
@@ -83,6 +107,14 @@ library PairInteraction {
         if (returnDataSize < 32) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Swaps tokenIn for tokenOut in a Trader Joe Legacy LB pair.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
     function swapLegacyLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
 
@@ -110,6 +142,14 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe LB pair (v2.0 and v2.1).
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
     function getSwapInLB(address pair, uint256 amountOut, bool swapForY)
         internal
         view
@@ -139,6 +179,14 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Swaps tokenIn for tokenOut in a Trader Joe LB pair (v2.0 and v2.1).
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 32 bytes.
+     */
     function swapLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
 
@@ -166,6 +214,16 @@ library PairInteraction {
         if (returnDataSize < 32) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Uniswap V3 pair.
+     * The function actually tries to swap token but revert before having to send any token.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must match the expected format, which is to revert with a
+     *   `RouterAdapter__UniswapV3SwapCallbackOnly(int256 amount0Delta, int256 amount1Delta)` error.
+     */
     function getSwapInUV3(address pair, bool zeroForOne, uint256 amountOut) internal returns (uint256 amountIn) {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
 
@@ -184,6 +242,14 @@ library PairInteraction {
         }
     }
 
+    /**
+     * @dev Swaps tokenIn for tokenOut in a Uniswap V3 pair.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
     function swapUV3(address pair, address recipient, bool zeroForOne, uint256 amountIn, address tokenIn)
         internal
         returns (uint256 amount)
@@ -210,6 +276,14 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Calls the `swap` function of a Uniswap V3 pair.
+     * This function doesn't revert on failure, it returns a success flag instead.
+     * It also returns the pointer to the return data.
+     *
+     * Requirements:
+     * - The call must succeed.
+     */
     function callSwapUV3(address pair, address recipient, bool zeroForOne, int256 deltaAmount, address tokenIn)
         internal
         returns (uint256 success, uint256 ptr)
