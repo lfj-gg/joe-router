@@ -126,7 +126,7 @@ library RouterLib {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes,
+        bytes calldata route,
         bool exactIn,
         address logic
     ) internal returns (uint256 totalIn, uint256 totalOut) {
@@ -134,15 +134,15 @@ library RouterLib {
 
         bytes32 allowanceSlot = getAllowanceSlot(allowances, tokenIn, logic, from);
 
-        uint256 length = 256 + routes.length; // 32 * 6 + 32 + 32 + routes.length
+        uint256 length = 256 + route.length; // 32 * 6 + 32 + 32 + route.length
         bytes memory data = new bytes(length);
 
         assembly {
             sstore(allowanceSlot, amountIn)
 
             switch exactIn
-            // swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, routes)
-            // swapExactOut(tokenIn, tokenOut, amountOut, amountIn, from, to, routes)
+            // swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, route)
+            // swapExactOut(tokenIn, tokenOut, amountOut, amountIn, from, to, route)
             case 1 { mstore(data, 0xbd084435) }
             default { mstore(data, 0xcb7e0007) }
 
@@ -153,8 +153,8 @@ library RouterLib {
             mstore(add(data, 160), from)
             mstore(add(data, 192), to)
             mstore(add(data, 224), 224) // 32 * 6 + 32
-            mstore(add(data, 256), routes.length)
-            calldatacopy(add(data, 288), routes.offset, routes.length)
+            mstore(add(data, 256), route.length)
+            calldatacopy(add(data, 288), route.offset, route.length)
 
             if iszero(call(gas(), logic, 0, add(data, 28), add(length, 4), 0, 64)) {
                 returndatacopy(0, 0, returndatasize())

@@ -105,27 +105,27 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
         nbToken = uint8(bound(nbToken, 2, type(uint8).max));
 
-        (bytes memory routes,) = _createRoutes(nbToken, 0);
+        (bytes memory route,) = _createRoutes(nbToken, 0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__ZeroSwap.selector);
-        routerLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), route);
 
-        (routes,) = _createRoutes(nbToken, 1);
+        (route,) = _createRoutes(nbToken, 1);
 
-        _setToken(routes, PackedRoute.TOKENS_OFFSET, tokenIn);
-        _setToken(routes, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * (nbToken - 1), tokenOut);
-
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
-        routerLogic.swapExactIn(address(0), tokenOut, 0, 0, address(0), address(0), routes);
+        _setToken(route, PackedRoute.TOKENS_OFFSET, tokenIn);
+        _setToken(route, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * (nbToken - 1), tokenOut);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
-        routerLogic.swapExactIn(tokenOut, tokenOut, 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactIn(address(0), tokenOut, 0, 0, address(0), address(0), route);
+
+        vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
+        routerLogic.swapExactIn(tokenOut, tokenOut, 0, 0, address(0), address(0), route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenOut.selector);
-        routerLogic.swapExactIn(tokenIn, address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactIn(tokenIn, address(0), 0, 0, address(0), address(0), route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenOut.selector);
-        routerLogic.swapExactIn(tokenIn, tokenIn, 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactIn(tokenIn, tokenIn, 0, 0, address(0), address(0), route);
     }
 
     function test_Fuzz_Revert_SwapExactOutStartAndVerify(
@@ -142,142 +142,140 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
         nbToken = uint8(bound(nbToken, 2, type(uint8).max));
 
-        bytes memory routes = abi.encodePacked(uint8(nbToken), uint8(0), new bytes(PackedRoute.ADDRESS_SIZE * nbToken));
+        bytes memory route = abi.encodePacked(uint8(nbToken), uint8(0), new bytes(PackedRoute.ADDRESS_SIZE * nbToken));
 
         vm.expectRevert(IRouterLogic.RouterLogic__ZeroSwap.selector);
-        routerLogic.swapExactOut(address(0), address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactOut(address(0), address(0), 0, 0, address(0), address(0), route);
 
-        (routes,) = _createRoutes(nbToken, 1);
+        (route,) = _createRoutes(nbToken, 1);
 
-        _setToken(routes, PackedRoute.TOKENS_OFFSET, tokenIn);
-        _setToken(routes, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * (nbToken - 1), tokenOut);
-
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
-        routerLogic.swapExactOut(address(0), tokenOut, 0, 0, address(0), address(0), routes);
+        _setToken(route, PackedRoute.TOKENS_OFFSET, tokenIn);
+        _setToken(route, PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * (nbToken - 1), tokenOut);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
-        routerLogic.swapExactOut(tokenOut, tokenOut, 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactOut(address(0), tokenOut, 0, 0, address(0), address(0), route);
+
+        vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenIn.selector);
+        routerLogic.swapExactOut(tokenOut, tokenOut, 0, 0, address(0), address(0), route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenOut.selector);
-        routerLogic.swapExactOut(tokenIn, address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactOut(tokenIn, address(0), 0, 0, address(0), address(0), route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidTokenOut.selector);
-        routerLogic.swapExactOut(tokenIn, tokenIn, 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactOut(tokenIn, tokenIn, 0, 0, address(0), address(0), route);
     }
 
     function test_Revert_SwapExactIn() public {
         vm.expectRevert(IRouterLogic.RouterLogic__InsufficientTokens.selector);
         routerLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), abi.encodePacked(uint16(0)));
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(1, 0);
+        (bytes memory route, uint256 ptr) = _createRoutes(1, 0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InsufficientTokens.selector);
-        routerLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), route);
 
-        (routes, ptr) = _createRoutes(2, 1);
+        (route, ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
         token0.mint(address(this), 1e18);
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 0.1e4, ZERO_FOR_ONE | LB12_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 0.1e4, ZERO_FOR_ONE | LB12_ID);
 
         vm.expectRevert(IRouterLogic.RouterLogic__ExcessBalanceUnused.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
 
         vm.expectRevert(
             abi.encodeWithSelector(IRouterLogic.RouterLogic__InsufficientAmountOut.selector, 1e18, 1e18 + 1)
         );
-        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18 + 1, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18 + 1, alice, bob, route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), 0, 0, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), 0, 0, alice, bob, route);
 
         token0.mint(address(this), type(uint192).max);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), uint256(type(uint128).max) + 1, 0, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), uint256(type(uint128).max) + 1, 0, alice, bob, route);
 
         lbPair01.setPrice(0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), type(uint128).max, 0, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), type(uint128).max, 0, alice, bob, route);
 
         lbPair01.setPrice(1e18 + 1);
         lbPair01.setV2_0(true);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), type(uint128).max, 0, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), type(uint128).max, 0, alice, bob, route);
     }
 
     function test_Revert_SwapExactOut() public {
         vm.expectRevert(IRouterLogic.RouterLogic__InsufficientTokens.selector);
         routerLogic.swapExactOut(address(0), address(0), 0, 0, address(0), address(0), abi.encodePacked(uint16(0)));
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(1, 0);
+        (bytes memory route, uint256 ptr) = _createRoutes(1, 0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InsufficientTokens.selector);
-        routerLogic.swapExactOut(address(0), address(0), 0, 0, address(0), address(0), routes);
+        routerLogic.swapExactOut(address(0), address(0), 0, 0, address(0), address(0), route);
 
-        (routes, ptr) = _createRoutes(2, 1);
+        (route, ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 0.1e4, ZERO_FOR_ONE | LB12_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 0.1e4, ZERO_FOR_ONE | LB12_ID);
 
         vm.expectRevert(IRouterLogic.RouterLogic__ExcessBalanceUnused.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
 
         vm.expectRevert(abi.encodeWithSelector(IRouterLogic.RouterLogic__ExceedsMaxAmountIn.selector, 1e18 + 1, 1e18));
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18 + 1, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18 + 1, alice, bob, route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 0, 0, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 0, 0, alice, bob, route);
 
         token0.mint(address(this), type(uint192).max);
 
         lbPair01.setPrice(0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactOut(
-            address(token0), address(token1), uint256(type(uint128).max) + 1, 0, alice, bob, routes
-        );
+        routerLogic.swapExactOut(address(token0), address(token1), uint256(type(uint128).max) + 1, 0, alice, bob, route);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), type(uint128).max, 0, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), type(uint128).max, 0, alice, bob, route);
 
         lbPair01.setPrice(1e18 + 1);
         lbPair01.setV2_0(true);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidAmount.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), type(uint128).max, 0, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), type(uint128).max, 0, alice, bob, route);
 
-        ptr = _setIsTransferTaxToken(routes, 1, true);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, 1, true);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
         vm.expectRevert(IRouterLogic.RouterLogic__TransferTaxNotSupported.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 
     function test_Fuzz_SwapExactInTaxToken(uint256 tax) public {
         tax = bound(tax, 0, 0.99e18);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(2, 1);
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, true);
-        ptr = _setToken(routes, ptr, address(taxToken));
-        ptr = _setToken(routes, ptr, address(token0));
+        ptr = _setIsTransferTaxToken(route, ptr, true);
+        ptr = _setToken(route, ptr, address(taxToken));
+        ptr = _setToken(route, ptr, address(token0));
 
-        _setRoute(routes, ptr, address(taxToken), address(token0), address(lbPair0t), 1e4, ONE_FOR_ZERO | LB12_ID);
+        _setRoute(route, ptr, address(taxToken), address(token0), address(lbPair0t), 1e4, ONE_FOR_ZERO | LB12_ID);
 
         uint256 amountIn = 1e18;
 
@@ -287,7 +285,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         uint256 amountOut = amountIn * (1e18 - tax) / 1e18;
 
         (uint256 totalIn, uint256 totalOut) =
-            routerLogic.swapExactIn(address(taxToken), address(token0), amountIn, amountOut, alice, bob, routes);
+            routerLogic.swapExactIn(address(taxToken), address(token0), amountIn, amountOut, alice, bob, route);
 
         assertEq(totalIn, amountIn, "test_Fuzz_SwapExactInTaxToken::1");
         assertEq(totalOut, amountOut, "test_Fuzz_SwapExactInTaxToken::2");
@@ -296,57 +294,57 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     function test_Fuzz_Revert_InvalidId(uint16 id) public {
         uint16 invalidId = id == 0 ? id : uint16(bound(id, (UV3_ID >> 8) + 1, type(uint8).max) << 8);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(2, 1);
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | invalidId);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | invalidId);
 
         token0.mint(address(this), 1e18);
 
         vm.expectRevert(RouterAdapter.RouterAdapter__InvalidId.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         vm.expectRevert(RouterAdapter.RouterAdapter__InvalidId.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 
     function test_Revert_InsufficientLBLiquidity() public {
-        (bytes memory routes, uint256 ptr) = _createRoutes(2, 1);
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(lbPair01), 1e4, ZERO_FOR_ONE | LB12_ID);
 
         vm.expectRevert(RouterAdapter.RouterAdapter__InsufficientLBLiquidity.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, type(uint128).max, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, type(uint128).max, alice, bob, route);
     }
 
     function test_Revert_UniswapV3() public {
-        (bytes memory routes, uint256 ptr) = _createRoutes(2, 1);
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, address(token0));
-        ptr = _setToken(routes, ptr, address(token1));
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(token1));
 
-        _setRoute(routes, ptr, address(token0), address(token1), address(this), 1e4, ZERO_FOR_ONE | UV3_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(this), 1e4, ZERO_FOR_ONE | UV3_ID);
 
         vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         revertData = new bytes(1);
 
         vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         revertData = abi.encodeWithSelector(bytes4(0x12345678), int256(0), int256(0));
 
         vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
-        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, routes);
+        routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 }
 

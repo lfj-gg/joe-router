@@ -82,36 +82,36 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.deal(alice, 0.1e18);
         deal(WETH, alice, amountIn);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(5, 13);
+        (bytes memory route, uint256 ptr) = _createRoutes(5, 13);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, WETH);
-        ptr = _setToken(routes, ptr, WAVAX);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, USDT);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, WETH);
+        ptr = _setToken(route, ptr, WAVAX);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setRoute(routes, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WETH, BTCB, LB2_WETH_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.4e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.3e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.6e4, TJ1_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.6e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, LB2_BTCB_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WETH, BTCB, LB2_WETH_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.4e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.3e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.6e4, TJ1_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.6e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, LB2_BTCB_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
 
         vm.startPrank(alice);
         IERC20(WETH).approve(address(router), amountIn);
 
         bytes[] memory multiRoutes = new bytes[](3);
 
-        multiRoutes[0] = routes;
-        multiRoutes[1] = routes;
+        multiRoutes[0] = route;
+        multiRoutes[1] = route;
 
         (, bytes memory data) = address(router).call{value: 0.1e18}(
             abi.encodeWithSelector(IRouter.simulate.selector, WETH, USDT, amountIn, 0, true, multiRoutes)
@@ -133,7 +133,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         }
 
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: 0.1e18}(WETH, USDT, amountIn, 0, alice, block.timestamp, routes);
+            router.swapExactIn{value: 0.1e18}(WETH, USDT, amountIn, 0, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToToken::4");
@@ -151,36 +151,36 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.deal(alice, 0.1e18);
         deal(WETH, alice, maxAmountIn);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(5, 13);
+        (bytes memory route, uint256 ptr) = _createRoutes(5, 13);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, WETH);
-        ptr = _setToken(routes, ptr, WAVAX);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, USDT);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, WETH);
+        ptr = _setToken(route, ptr, WAVAX);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setRoute(routes, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WETH, BTCB, LB2_WETH_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.06e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.1e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.4e4, TJ1_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.3e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, LB2_BTCB_USDC, 0.06e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.04e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WETH, BTCB, LB2_WETH_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.06e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.1e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.4e4, TJ1_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.3e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, LB2_BTCB_USDC, 0.06e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.04e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
 
         vm.startPrank(alice);
         IERC20(WETH).approve(address(router), maxAmountIn);
 
         bytes[] memory multiRoutes = new bytes[](3);
 
-        multiRoutes[0] = routes;
-        multiRoutes[1] = routes;
+        multiRoutes[0] = route;
+        multiRoutes[1] = route;
 
         (, bytes memory data) = address(router).call{value: 0.1e18}(
             abi.encodeWithSelector(
@@ -204,7 +204,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         }
 
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactOut{value: 0.1e18}(WETH, USDT, amountOut, maxAmountIn, alice, block.timestamp, routes);
+            router.swapExactOut{value: 0.1e18}(WETH, USDT, amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::4");
@@ -220,28 +220,28 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.deal(alice, amountIn + 0.1e18);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(4, 10);
+        (bytes memory route, uint256 ptr) = _createRoutes(4, 10);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, WAVAX);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, USDT);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, WAVAX);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.5e4, TJ1_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.6e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, LB2_BTCB_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.5e4, TJ1_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.6e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, LB2_BTCB_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, USDT, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: amountIn + 0.1e18}(address(0), USDT, amountIn, 0, alice, block.timestamp, routes);
+            router.swapExactIn{value: amountIn + 0.1e18}(address(0), USDT, amountIn, 0, alice, block.timestamp, route);
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToToken::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToToken::2");
@@ -255,28 +255,28 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.deal(alice, maxAmountIn + 0.1e18);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(4, 10);
+        (bytes memory route, uint256 ptr) = _createRoutes(4, 10);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, WAVAX);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, USDT);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, WAVAX);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, UV3_AVAX_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.6e4, TJ1_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB1_AVAX_USDC, 0.5e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.4e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, BTCB, USDC, LB2_BTCB_USDC, 0.3e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, USDT, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, USDT, LB2_USDT_USDC, 0.6e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 0.6e4, TJ1_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB1_AVAX_USDC, 0.5e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, UV3_BTCB_USDC, 0.4e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, BTCB, USDC, LB2_BTCB_USDC, 0.3e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, USDT, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, USDT, LB2_USDT_USDC, 0.6e4, LB12_ID | ONE_FOR_ZERO);
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
-            address(0), USDT, amountOut, maxAmountIn, alice, block.timestamp, routes
+            address(0), USDT, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::1");
@@ -291,29 +291,29 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.deal(alice, 0.1e18);
         deal(USDT, alice, amountIn);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(4, 10);
+        (bytes memory route, uint256 ptr) = _createRoutes(4, 10);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, USDT);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, WAVAX);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, USDT);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, WAVAX);
 
-        ptr = _setRoute(routes, ptr, USDT, USDC, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDT, USDC, LB2_USDT_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, BTCB, UV3_BTCB_USDC, 0.2e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, BTCB, LB2_BTCB_USDC, 0.3e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, TJ1_AVAX_USDC, 0.3e4, TJ1_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, UV3_AVAX_USDC, 0.5e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.4e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, LB1_AVAX_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDT, USDC, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDT, USDC, LB2_USDT_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, BTCB, UV3_BTCB_USDC, 0.2e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, BTCB, LB2_BTCB_USDC, 0.3e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, TJ1_AVAX_USDC, 0.3e4, TJ1_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, UV3_AVAX_USDC, 0.5e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.4e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, LB1_AVAX_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
 
         vm.startPrank(alice);
         IERC20(USDT).approve(address(router), amountIn);
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: 0.1e18}(USDT, address(0), amountIn, 0, alice, block.timestamp, routes);
+            router.swapExactIn{value: 0.1e18}(USDT, address(0), amountIn, 0, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNative::1");
@@ -329,29 +329,29 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.deal(alice, 0.1e18);
         deal(USDT, alice, maxAmountIn);
 
-        (bytes memory routes, uint256 ptr) = _createRoutes(4, 10);
+        (bytes memory route, uint256 ptr) = _createRoutes(4, 10);
 
-        ptr = _setIsTransferTaxToken(routes, ptr, false);
-        ptr = _setToken(routes, ptr, USDT);
-        ptr = _setToken(routes, ptr, USDC);
-        ptr = _setToken(routes, ptr, BTCB);
-        ptr = _setToken(routes, ptr, WAVAX);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, USDT);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, BTCB);
+        ptr = _setToken(route, ptr, WAVAX);
 
-        ptr = _setRoute(routes, ptr, USDT, USDC, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDT, USDC, LB2_USDT_USDC, 0.6e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, BTCB, UV3_BTCB_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, BTCB, LB2_BTCB_USDC, 0.6e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, TJ1_AVAX_USDC, 1.0e4, TJ1_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, UV3_AVAX_USDC, 0.6e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.5e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, LB1_AVAX_USDC, 0.3e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(routes, ptr, USDC, WAVAX, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDT, USDC, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDT, USDC, LB2_USDT_USDC, 0.6e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, BTCB, UV3_BTCB_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, BTCB, LB2_BTCB_USDC, 0.6e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, TJ1_AVAX_USDC, 1.0e4, TJ1_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, UV3_AVAX_USDC, 0.6e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB2_AVAX_BTCB, 0.5e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, BTCB, WAVAX, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, LB1_AVAX_USDC, 0.3e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, LB0_AVAX_USDC, 0.0001e4, LB0_ID | ONE_FOR_ZERO);
 
         vm.startPrank(alice);
         IERC20(USDT).approve(address(router), maxAmountIn);
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactOut{value: 0.1e18}(USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, routes);
+            router.swapExactOut{value: 0.1e18}(USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNative::1");

@@ -21,7 +21,7 @@ interface IRouterLogic {
         uint256 amountOutMin,
         address from,
         address to,
-        bytes calldata routes
+        bytes calldata route
     ) external returns (uint256 totalIn, uint256 totalOut);
 
     function swapExactOut(
@@ -31,6 +31,6 @@ interface IRouterLogic {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes
+        bytes calldata route
     ) external payable returns (uint256 totalIn, uint256 totalOut);
 }

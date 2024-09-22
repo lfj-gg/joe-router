@@ -44,13 +44,13 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        bytes calldata routes
+        bytes calldata route
     ) external payable returns (uint256 totalIn, uint256 totalOut) {
         if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
 
         _verifyParameters(tokenIn, tokenOut, amountIn, to, deadline);
 
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, routes, true);
+        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, route, true);
 
         emit SwapExactIn(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
@@ -62,11 +62,11 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountInMax,
         address to,
         uint256 deadline,
-        bytes calldata routes
+        bytes calldata route
     ) external payable returns (uint256 totalIn, uint256 totalOut) {
         _verifyParameters(tokenIn, tokenOut, amountOut, to, deadline);
 
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, routes, false);
+        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, route, false);
 
         emit SwapExactOut(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
@@ -107,10 +107,10 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountIn,
         uint256 amountOut,
         bool exactIn,
-        bytes calldata routes
+        bytes calldata route
     ) external payable {
         (uint256 totalIn, uint256 totalOut) =
-            _swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, routes, exactIn);
+            _swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, route, exactIn);
 
         revert Router__SimulateSingle(exactIn ? totalOut : totalIn);
     }
@@ -156,7 +156,7 @@ contract Router is Ownable2Step, IRouter {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes,
+        bytes calldata route,
         bool exactIn
     ) internal returns (uint256 totalIn, uint256 totalOut) {
         uint256 balance = TokenLib.universalBalanceOf(tokenOut, to);
@@ -171,7 +171,7 @@ contract Router is Ownable2Step, IRouter {
         }
 
         (totalIn, totalOut) = RouterLib.swap(
-            _allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, routes, exactIn, _logic
+            _allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, _logic
         );
 
         if (exactIn) {

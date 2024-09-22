@@ -31,9 +31,9 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         uint256 amountOutMin,
         address from,
         address to,
-        bytes calldata routes
+        bytes calldata route
     ) external override returns (uint256, uint256) {
-        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(routes, tokenIn, tokenOut);
+        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
         uint256[] memory balances = new uint256[](nbTokens);
 
@@ -45,10 +45,10 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             address from_ = from;
             address to_ = to;
             for (uint256 i; i < nbSwaps; i++) {
-                (ptr, value) = PackedRoute.next(routes, ptr);
+                (ptr, value) = PackedRoute.next(route, ptr);
 
                 unchecked {
-                    total += _swapExactInSingle(routes, balances, from_, to_, value);
+                    total += _swapExactInSingle(route, balances, from_, to_, value);
                 }
             }
         }
@@ -68,13 +68,13 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes
+        bytes calldata route
     ) external payable override returns (uint256 totalIn, uint256 totalOut) {
-        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(routes, tokenIn, tokenOut);
+        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
-        if (PackedRoute.isTransferTax(routes)) revert RouterLogic__TransferTaxNotSupported();
+        if (PackedRoute.isTransferTax(route)) revert RouterLogic__TransferTaxNotSupported();
 
-        (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(routes, amountOut, nbTokens, nbSwaps);
+        (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(route, amountOut, nbTokens, nbSwaps);
 
         if (amountIn > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountIn, amountInMax);
 
@@ -82,9 +82,9 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         address from_ = from;
         address to_ = to;
         for (uint256 i; i < nbSwaps; i++) {
-            (ptr, value) = PackedRoute.next(routes, ptr);
+            (ptr, value) = PackedRoute.next(route, ptr);
 
-            _swapExactOutSingle(routes, nbTokens, from_, to_, value, amountsIn[i]);
+            _swapExactOutSingle(route, nbTokens, from_, to_, value, amountsIn[i]);
         }
 
         return (amountIn, amountOut);
@@ -94,27 +94,27 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         if (amount == 0 || amount > type(uint128).max) revert RouterLogic__InvalidAmount();
     }
 
-    function _startAndVerify(bytes calldata routes, address tokenIn, address tokenOut)
+    function _startAndVerify(bytes calldata route, address tokenIn, address tokenOut)
         private
         view
         returns (uint256 ptr, uint256 nbTokens, uint256 nbSwaps)
     {
         if (msg.sender != _router) revert RouterLogic__OnlyRouter();
 
-        (ptr, nbTokens, nbSwaps) = PackedRoute.start(routes);
+        (ptr, nbTokens, nbSwaps) = PackedRoute.start(route);
 
         if (nbTokens < 2) revert RouterLogic__InsufficientTokens();
         if (nbSwaps == 0) revert RouterLogic__ZeroSwap();
 
-        if (PackedRoute.token(routes, 0) != tokenIn) revert RouterLogic__InvalidTokenIn();
-        if (PackedRoute.token(routes, nbTokens - 1) != tokenOut) revert RouterLogic__InvalidTokenOut();
+        if (PackedRoute.token(route, 0) != tokenIn) revert RouterLogic__InvalidTokenIn();
+        if (PackedRoute.token(route, nbTokens - 1) != tokenOut) revert RouterLogic__InvalidTokenOut();
     }
 
-    function _getAmountsIn(bytes calldata routes, uint256 amountOut, uint256 nbTokens, uint256 nbSwaps)
+    function _getAmountsIn(bytes calldata route, uint256 amountOut, uint256 nbTokens, uint256 nbSwaps)
         private
         returns (uint256 amountIn, uint256[] memory)
     {
-        uint256 ptr = routes.length;
+        uint256 ptr = route.length;
 
         uint256[] memory amountsIn = new uint256[](nbSwaps);
         uint256[] memory balances = new uint256[](nbTokens);
@@ -124,7 +124,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
         bytes32 value;
         for (uint256 i = nbSwaps; i > 0;) {
-            (ptr, value) = PackedRoute.previous(routes, ptr);
+            (ptr, value) = PackedRoute.previous(route, ptr);
 
             (address pair, uint256 percent, uint256 flags, uint256 tokenOutId, uint256 tokenInId) =
                 PackedRoute.decode(value);
@@ -151,7 +151,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     }
 
     function _swapExactInSingle(
-        bytes calldata routes,
+        bytes calldata route,
         uint256[] memory balances,
         address from,
         address to,
@@ -164,7 +164,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         balances[tokenInId] -= amountIn;
 
         (address tokenIn, uint256 actualAmountIn) =
-            _transfer(routes, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
+            _transfer(route, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
 
         address recipient = tokenOutId == balances.length - 1 ? to : address(this);
 
@@ -180,7 +180,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     }
 
     function _swapExactOutSingle(
-        bytes calldata routes,
+        bytes calldata route,
         uint256 nbTokens,
         address from,
         address to,
@@ -190,21 +190,21 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         (address pair,, uint256 flags, uint256 tokenInId, uint256 tokenOutId) = PackedRoute.decode(value);
 
         (address tokenIn, uint256 actualAmountIn) =
-            _transfer(routes, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
+            _transfer(route, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
 
         address recipient = tokenOutId == nbTokens - 1 ? to : address(this);
 
         _swap(pair, tokenIn, actualAmountIn, recipient, flags);
     }
 
-    function _transfer(bytes calldata routes, uint256 tokenId, address from, address to, uint256 amount)
+    function _transfer(bytes calldata route, uint256 tokenId, address from, address to, uint256 amount)
         private
         returns (address, uint256)
     {
-        address token = PackedRoute.token(routes, tokenId);
+        address token = PackedRoute.token(route, tokenId);
 
         if (tokenId == 0) {
-            bool isTransferTax = PackedRoute.isTransferTax(routes);
+            bool isTransferTax = PackedRoute.isTransferTax(route);
 
             uint256 balance = isTransferTax ? TokenLib.balanceOf(token, to) : 0;
             RouterLib.transfer(_router, token, from, to, amount); // todo change name?

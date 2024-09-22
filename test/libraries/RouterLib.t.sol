@@ -194,7 +194,7 @@ contract RouterLibTest is Test {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes,
+        bytes calldata route,
         bool exactIn
     ) public {
         _case = 1;
@@ -205,14 +205,14 @@ contract RouterLibTest is Test {
 
         _allowances[key] = type(uint256).max;
 
-        this.swap(tokenIn, tokenOut, amountIn, amountOut, from, to, routes, exactIn);
+        this.swap(tokenIn, tokenOut, amountIn, amountOut, from, to, route, exactIn);
 
         assertEq(_allowances[key], 0, "test_Fuzz_Swap::1");
         assertEq(_allowance, amountIn, "test_Fuzz_Swap::2");
 
         bytes memory expectedData = exactIn
-            ? abi.encodeCall(IRouterLogic.swapExactIn, (tokenIn, tokenOut, amountIn, amountOut, from, to, routes))
-            : abi.encodeCall(IRouterLogic.swapExactOut, (tokenIn, tokenOut, amountIn, amountOut, from, to, routes));
+            ? abi.encodeCall(IRouterLogic.swapExactIn, (tokenIn, tokenOut, amountIn, amountOut, from, to, route))
+            : abi.encodeCall(IRouterLogic.swapExactOut, (tokenIn, tokenOut, amountIn, amountOut, from, to, route));
 
         uint256 length = _data.length;
 
@@ -221,7 +221,7 @@ contract RouterLibTest is Test {
         }
 
         assertGt(length, 0, "test_Fuzz_Swap::3");
-        assertEq(length, 4 + 32 * 8 + routes.length, "test_Fuzz_Swap::4");
+        assertEq(length, 4 + 32 * 8 + route.length, "test_Fuzz_Swap::4");
         assertEq(_data, expectedData, "test_Fuzz_Swap::5");
     }
 
@@ -264,9 +264,9 @@ contract RouterLibTest is Test {
         uint256 amountOut,
         address from,
         address to,
-        bytes calldata routes,
+        bytes calldata route,
         bool exactIn
     ) public verifyMemory {
-        RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, to, routes, exactIn, address(this));
+        RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, to, route, exactIn, address(this));
     }
 }
