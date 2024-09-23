@@ -7,6 +7,11 @@ import {TokenLib} from "./libraries/TokenLib.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
 
+/**
+ * @title Router
+ * @dev Router contract for swapping tokens using a predefined route.
+ * The route must follow the PackedRoute format.
+ */
 contract Router is Ownable2Step, IRouter {
     address public immutable WNATIVE;
 
@@ -14,24 +19,52 @@ contract Router is Ownable2Step, IRouter {
 
     mapping(bytes32 key => uint256 allowance) private _allowances;
 
-    receive() external payable {
-        if (msg.sender != WNATIVE) revert Router__OnlyWnative();
-    }
-
-    fallback() external {
-        RouterLib.validateAndTransfer(_allowances);
-    }
-
+    /**
+     * @dev Constructor for the Router contract.
+     *
+     * Requirements:
+     * - The wnative address must be a contract with code.
+     */
     constructor(address wnative, address initialOwner) Ownable(initialOwner) {
         if (address(wnative).code.length == 0) revert Router__InvalidWnative();
 
         WNATIVE = wnative;
     }
 
+    /**
+     * @dev Only allows native token to be received from unwrapping wnative.
+     */
+    receive() external payable {
+        if (msg.sender != WNATIVE) revert Router__OnlyWnative();
+    }
+
+    /**
+     * @dev Fallback function to validate and transfer tokens.
+     */
+    fallback() external {
+        RouterLib.validateAndTransfer(_allowances);
+    }
+
+    /**
+     * @dev Returns the logic contract address.
+     */
     function getLogic() external view returns (address) {
         return _logic;
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the exact input amount.
+     *
+     * Emits a {SwapExactIn} event.
+     *
+     * Requirements:
+     * - The recipient address must not be zero or the router address.
+     * - The deadline must not have passed.
+     * - The input token and output token must not be the same.
+     * - If the amountIn is zero, the entire balance of the input token will be used and it must not be zero.
+     * - The entire amountIn of the input token must be spent.
+     * - The actual amount of tokenOut received must be greater than or equal to the amountOutMin.
+     */
     function swapExactIn(
         address tokenIn,
         address tokenOut,
@@ -50,6 +83,19 @@ contract Router is Ownable2Step, IRouter {
         emit SwapExactIn(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the exact output amount.
+     *
+     * Emits a {SwapExactOut} event.
+     *
+     * Requirements:
+     * - The recipient address must not be zero or the router address.
+     * - The deadline must not have passed.
+     * - The input token and output token must not be the same.
+     * - If the amountInMax is zero, the entire balance of the input token will be used and it must not be zero.
+     * - The actual amount of tokenIn spent must be less than or equal to the amountInMax.
+     * - The actual amount of tokenOut received must be greater than or equal to the amountOut.
+     */
     function swapExactOut(
         address tokenIn,
         address tokenOut,
@@ -66,6 +112,10 @@ contract Router is Ownable2Step, IRouter {
         emit SwapExactOut(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
 
+    /**
+     * @dev Simulates the swap of tokens using multiple routes.
+     * The simulation will revert with an array of amounts if the swap is valid.
+     */
     function simulate(
         address tokenIn,
         address tokenOut,
@@ -96,6 +146,10 @@ contract Router is Ownable2Step, IRouter {
         revert Router__Simulations(amounts);
     }
 
+    /**
+     * @dev Simulates the swap of tokens using a single route.
+     * The simulation will revert with the total amount of tokenIn or tokenOut if the swap is valid.
+     */
     function simulateSingle(
         address tokenIn,
         address tokenOut,
@@ -110,12 +164,29 @@ contract Router is Ownable2Step, IRouter {
         revert Router__SimulateSingle(exactIn ? totalOut : totalIn);
     }
 
+    /**
+     * @dev Updates the logic contract address.
+     *
+     * Emits a {RouterLogicUpdated} event.
+     *
+     * Requirements:
+     * - The caller must be the owner.
+     */
     function updateRouterLogic(address logic) external onlyOwner {
         _logic = logic;
 
         emit RouterLogicUpdated(logic);
     }
 
+    /**
+     * @dev Helper function to verify the input parameters of a swap.
+     *
+     * Requirements:
+     * - The recipient address must not be zero or the router address.
+     * - The deadline must not have passed.
+     * - The input token and output token must not be the same.
+     * - The amount must not be zero.
+     */
     function _verifyParameters(address tokenIn, address tokenOut, uint256 amount, address to, uint256 deadline)
         internal
         view
@@ -126,6 +197,13 @@ contract Router is Ownable2Step, IRouter {
         if (amount == 0) revert Router__ZeroAmount();
     }
 
+    /**
+     * @dev Helper function to verify the output of a swap.
+     *
+     * Requirements:
+     * - The actual amount of tokenOut returned by the logic contract must be greater than the amountOutMin.
+     * - The actual balance increase of the recipient must be greater than the amountOutMin.
+     */
     function _verifySwap(address tokenOut, address to, uint256 balance, uint256 amountOutMin, uint256 amountOut)
         internal
         view
@@ -144,6 +222,17 @@ contract Router is Ownable2Step, IRouter {
         }
     }
 
+    /**
+     * @dev Helper function to call the logic contract to swap tokens.
+     * This function will wrap the input token if it is native and unwrap the output token if it is native.
+     * It will also refund the sender if there is any excess amount of native token.
+     * It will allow the logic contract to spend at most amountIn of the input token from the sender, and reset
+     * the allowance after the swap, see {RouterLib.swap}.
+     *
+     * Requirements:
+     * - If the swap is exactIn, the totalIn must be equal to the amountIn.
+     * - If the swap is exactOut, the totalIn must be less than or equal to the amountIn.
+     */
     function _swap(
         address tokenIn,
         address tokenOut,

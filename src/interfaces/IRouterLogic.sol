@@ -13,6 +13,7 @@ interface IRouterLogic {
     error RouterLogic__ExceedsMaxAmountIn(uint256 amountIn, uint256 amountInMax);
     error RouterLogic__InsufficientAmountOut(uint256 amountOut, uint256 amountOutMin);
     error RouterLogic__TransferTaxNotSupported();
+    error RouterLogic__OnlyRouterOwner();
 
     function swapExactIn(
         address tokenIn,
@@ -33,4 +34,6 @@ interface IRouterLogic {
         address to,
         bytes calldata route
     ) external payable returns (uint256 totalIn, uint256 totalOut);
+
+    function sweep(address token, address to, uint256 amount) external;
 }

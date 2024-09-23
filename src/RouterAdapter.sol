@@ -5,22 +5,33 @@ import {Flags} from "./libraries/Flags.sol";
 import {PairInteraction} from "./libraries/PairInteraction.sol";
 import {TokenLib} from "./libraries/TokenLib.sol";
 
+/**
+ * @title RouterAdapter
+ * @notice Router adapter contract for interacting with different types of pairs.
+ * Currently supports Uniswap V2, Trader Joe Legacy LB, Trader Joe LB, and Uniswap V3 pairs.
+ */
 abstract contract RouterAdapter {
     error RouterAdapter__InvalidId();
     error RouterAdapter__InsufficientLBLiquidity();
     error RouterAdapter__UniswapV3SwapCallbackOnly(int256 amount0Delta, int256 amount1Delta);
 
-    uint160 internal constant MIN_SWAP_SQRT_RATIO_UV3 = 4295128739 + 1;
-    uint160 internal constant MAX_SWAP_SQRT_RATIO_UV3 = 1461446703485210103287273052203988822378723970342 - 1;
-
     address private immutable _routerV2_0;
 
     address private _callback = address(0xdead);
 
+    /**
+     * @dev Constructor for the RouterAdapter contract.
+     */
     constructor(address routerV2_0) {
         _routerV2_0 = routerV2_0;
     }
 
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the pair.
+     *
+     * Requirements:
+     * - The id of the flags must be valid.
+     */
     function _getAmountIn(address pair, uint256 flags, uint256 amountOut) internal returns (uint256) {
         uint256 id = Flags.id(flags);
 
@@ -37,6 +48,12 @@ abstract contract RouterAdapter {
         }
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient.
+     *
+     * Requirements:
+     * - The id of the flags must be valid.
+     */
     function _swap(address pair, address tokenIn, uint256 amountIn, address recipient, uint256 flags)
         internal
         returns (uint256 amountOut)
@@ -58,11 +75,17 @@ abstract contract RouterAdapter {
 
     /* Uniswap V2 */
 
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Uniswap V2 pair.
+     */
     function _getAmountInUV2(address pair, uint256 flags, uint256 amountOut) internal view returns (uint256) {
         (uint256 reserveIn, uint256 reserveOut) = PairInteraction.getReservesUV2(pair, Flags.zeroForOne(flags));
         return (reserveIn * amountOut * 1000 - 1) / ((reserveOut - amountOut) * 997) + 1;
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Uniswap V2 pair.
+     */
     function _swapUV2(address pair, uint256 flags, uint256 amountIn, address recipient)
         internal
         returns (uint256 amountOut)
@@ -79,6 +102,9 @@ abstract contract RouterAdapter {
 
     /* Legacy LB v2.0 */
 
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Trader Joe Legacy LB pair.
+     */
     function _getAmountInLegacyLB(address pair, uint256 flags, uint256 amountOut)
         internal
         view
@@ -87,28 +113,44 @@ abstract contract RouterAdapter {
         return PairInteraction.getSwapInLegacyLB(_routerV2_0, pair, amountOut, Flags.zeroForOne(flags));
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Trader Joe Legacy LB pair.
+     */
     function _swapLegacyLB(address pair, uint256 flags, address recipient) internal returns (uint256 amountOut) {
         return PairInteraction.swapLegacyLB(pair, Flags.zeroForOne(flags), recipient);
     }
 
     /* LB v2.1 and v2.2 */
 
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Trader Joe LB pair.
+     */
     function _getAmountInLB(address pair, uint256 flags, uint256 amountOut) internal view returns (uint256) {
         (uint256 amountIn, uint256 amountLeft) = PairInteraction.getSwapInLB(pair, amountOut, Flags.zeroForOne(flags));
         if (amountLeft != 0) revert RouterAdapter__InsufficientLBLiquidity();
         return amountIn;
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Trader Joe LB pair.
+     */
     function _swapLB(address pair, uint256 flags, address recipient) internal returns (uint256 amountOut) {
         return PairInteraction.swapLB(pair, Flags.zeroForOne(flags), recipient);
     }
 
     /* Uniswap V3 */
 
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Uniswap V3 pair.
+     */
     function _getAmountInUV3(address pair, uint256 flags, uint256 amountOut) internal returns (uint256 amountIn) {
         return PairInteraction.getSwapInUV3(pair, Flags.zeroForOne(flags), amountOut);
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Uniswap V3 pair.
+     * Will set the callback address to the pair.
+     */
     function _swapUV3(address pair, uint256 flags, address recipient, uint256 amountIn, address tokenIn)
         internal
         returns (uint256 amountOut)
@@ -118,6 +160,12 @@ abstract contract RouterAdapter {
         return PairInteraction.swapUV3(pair, recipient, Flags.zeroForOne(flags), amountIn, tokenIn);
     }
 
+    /**
+     * @dev Callback function for Uniswap V3 swaps.
+     *
+     * Requirements:
+     * - The caller must be the callback address.
+     */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         if (msg.sender != _callback) revert RouterAdapter__UniswapV3SwapCallbackOnly(amount0Delta, amount1Delta);
         _callback = address(0xdead);

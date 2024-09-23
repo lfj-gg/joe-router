@@ -32,6 +32,10 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         return (amountIn, amountOut - amountLeft);
     }
 
+    function owner() external view returns (address) {
+        return address(this);
+    }
+
     fallback() external {
         bytes memory data = revertData;
         if (data.length > 0) {
@@ -345,6 +349,26 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
         vm.expectRevert(revertData);
         routerLogic.swapExactOut(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
+    }
+
+    function test_Sweep() public {
+        vm.deal(address(routerLogic), 1e18);
+
+        routerLogic.sweep(address(0), alice, 1e18);
+
+        assertEq(alice.balance, 1e18, "test_Sweep::1");
+
+        token0.mint(address(routerLogic), 1e18);
+
+        routerLogic.sweep(address(token0), alice, 1e18);
+
+        assertEq(token0.balanceOf(alice), 1e18, "test_Sweep::2");
+    }
+
+    function test_Revert_Sweep() public {
+        vm.expectRevert(IRouterLogic.RouterLogic__OnlyRouterOwner.selector);
+        vm.prank(alice);
+        routerLogic.sweep(address(0), address(0), 0);
     }
 }
 

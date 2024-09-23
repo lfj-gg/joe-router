@@ -463,4 +463,6 @@ contract MockRouterLogic is IRouterLogic {
 
         if (route.length >= 128) return abi.decode(route[64:], (uint256, uint256));
     }
+
+    function sweep(address, address, uint256) external {}
 }

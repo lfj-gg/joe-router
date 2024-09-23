@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
 import {TokenLib} from "./libraries/TokenLib.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
 import {RouterAdapter} from "./RouterAdapter.sol";
@@ -8,17 +10,42 @@ import {PackedRoute} from "./libraries/PackedRoute.sol";
 import {Flags} from "./libraries/Flags.sol";
 import {IRouterLogic} from "./interfaces/IRouterLogic.sol";
 
+/**
+ * @title RouterLogic
+ * @notice Router logic contract for swapping tokens using a route.
+ * The route must follow the PackedRoute format.
+ */
 contract RouterLogic is RouterAdapter, IRouterLogic {
     address private immutable _router;
 
     uint256 internal constant BPS = 10000;
 
+    /**
+     * @dev Constructor for the RouterLogic contract.
+     *
+     * Requirements:
+     * - The router address must be a contract with code.
+     */
     constructor(address router, address routerV2_0) RouterAdapter(routerV2_0) {
         if (router.code.length == 0) revert RouterLogic__InvalidRouter();
 
         _router = router;
     }
 
+    /**
+     * @dev Swaps an exact amount of tokenIn for as much tokenOut as possible.
+     *
+     * Requirements:
+     * - The caller must be the router.
+     * - The route must be a valid route, following the PackedRoute format.
+     * - The route must have at least two tokens.
+     * - The route must have at least one swap.
+     * - The tokenIn must be the first token in the route.
+     * - The tokenOut must be the last token in the route.
+     * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
+     * - The entire balance of all tokens must have been swapped to the last token.
+     * - The actual amountOut must be greater than or equal to the amountOutMin.
+     */
     function swapExactIn(
         address tokenIn,
         address tokenOut,
@@ -56,6 +83,22 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         return (amountIn, amountOut);
     }
 
+    /**
+     * @dev Swaps an exact amount of tokenOut for as little tokenIn as possible.
+     * Due to roundings, the actual amountOut might actually be greater than the amountOut.
+     *
+     * Requirements:
+     * - The caller must be the router.
+     * - The route must be a valid route, following the PackedRoute format.
+     * - The route must have at least two tokens.
+     * - The route must have at least one swap.
+     * - The tokenIn must be the first token in the route.
+     * - The tokenOut must be the last token in the route.
+     * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
+     * - The entire balance of all tokens must have been used to calculate the amountIn.
+     *   (due to potential rounding, some dust might be left in the contract after the swap)
+     * - The actual amountIn must be less than or equal to the amountInMax.
+     */
     function swapExactOut(
         address tokenIn,
         address tokenOut,
@@ -85,10 +128,38 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         return (amountIn, amountOut);
     }
 
+    /**
+     * @dev Sweeps tokens from the contract to the recipient.
+     *
+     * Requirements:
+     * - The caller must be the router owner.
+     */
+    function sweep(address token, address to, uint256 amount) external override {
+        if (msg.sender != Ownable(_router).owner()) revert RouterLogic__OnlyRouterOwner();
+
+        token == address(0) ? TokenLib.transferNative(to, amount) : TokenLib.transfer(token, to, amount);
+    }
+
+    /**
+     * @dev Helper function to check if the amount is valid.
+     *
+     * Requirements:
+     * - The amount must be greater than zero and less than 2^128.
+     */
     function _checkAmount(uint256 amount) private pure {
         if (amount == 0 || amount > type(uint128).max) revert RouterLogic__InvalidAmount();
     }
 
+    /**
+     * @dev Helper function to start and verify the route.
+     *
+     * Requirements:
+     * - The caller must be the router.
+     * - The route must have at least two tokens.
+     * - The route must have at least one swap.
+     * - The tokenIn must be the first token in the route.
+     * - The tokenOut must be the last token in the route.
+     */
     function _startAndVerify(bytes calldata route, address tokenIn, address tokenOut)
         private
         view
@@ -105,6 +176,14 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         if (PackedRoute.token(route, nbTokens - 1) != tokenOut) revert RouterLogic__InvalidTokenOut();
     }
 
+    /**
+     * @dev Helper function to return the amountIn for each swap in the route and the amountIn of the first token.
+     *
+     * Requirements:
+     * - The route must be a valid route, following the PackedRoute format.
+     * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
+     * - The entire balance of all tokens must have been used to calculate the amountIn.
+     */
     function _getAmountsIn(bytes calldata route, uint256 amountOut, uint256 nbTokens, uint256 nbSwaps)
         private
         returns (uint256 amountIn, uint256[] memory)
@@ -145,6 +224,13 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         return (amountIn, amountsIn);
     }
 
+    /**
+     * @dev Helper function to swap an exact amount of tokenIn for as much tokenOut as possible.
+     *
+     * Requirements:
+     * - The route must be a valid route, following the PackedRoute format.
+     * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
+     */
     function _swapExactInSingle(
         bytes calldata route,
         uint256[] memory balances,
@@ -174,6 +260,12 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         }
     }
 
+    /**
+     * @dev Helper function to swap an exact amount of tokenOut for as little tokenIn as possible.
+     *
+     * Requirements:
+     * - The route must be a valid route, following the PackedRoute format.
+     */
     function _swapExactOutSingle(
         bytes calldata route,
         uint256 nbTokens,
@@ -192,6 +284,16 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         _swap(pair, tokenIn, actualAmountIn, recipient, flags);
     }
 
+    /**
+     * @dev Helper function to transfer tokens.
+     * If the token is the first token of the route, it will transfer the token from the user to the recipient using
+     * the transfer function of the router. If the token is flagged as a transfer tax, it will return the actual amount
+     * received by the recipient.
+     * Else, it will transfer the token from this contract to the recipient, unless the recipient is this contract.
+     *
+     * Requirements:
+     * - The route must be a valid route, following the PackedRoute format.
+     */
     function _transfer(bytes calldata route, uint256 tokenId, address from, address to, uint256 amount)
         private
         returns (address, uint256)
@@ -202,7 +304,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
             bool isTransferTax = PackedRoute.isTransferTax(route);
 
             uint256 balance = isTransferTax ? TokenLib.balanceOf(token, to) : 0;
-            RouterLib.transfer(_router, token, from, to, amount); // todo change name?
+            RouterLib.transfer(_router, token, from, to, amount);
             amount = isTransferTax ? TokenLib.balanceOf(token, to) - balance : amount;
         } else if (to != address(this)) {
             TokenLib.transfer(token, to, amount);

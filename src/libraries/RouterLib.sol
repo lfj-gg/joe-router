@@ -111,7 +111,8 @@ library RouterLib {
 
     /**
      * @dev Swaps tokens using the router logic.
-     * It will also set the allowance for the logic contract to spend the token from the sender.
+     * It will also set the allowance for the logic contract to spend the token from the sender and reset it
+     * after the swap is done.
      *
      * Requirements:
      * - The logic contract must not be the zero address.
