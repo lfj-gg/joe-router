@@ -25,7 +25,7 @@ library RouterLib {
         address sender,
         address from
     ) internal pure returns (bytes32 s) {
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, shl(96, token))
             mstore(20, shl(96, sender))
 
@@ -58,7 +58,7 @@ library RouterLib {
         uint256 allowance;
 
         uint256 success;
-        assembly {
+        assembly ("memory-safe") {
             token := shr(96, calldataload(0))
             from := shr(96, calldataload(20))
             to := shr(96, calldataload(40))
@@ -67,7 +67,7 @@ library RouterLib {
 
         bytes32 allowanceSlot = getAllowanceSlot(allowances, token, msg.sender, from);
 
-        assembly {
+        assembly ("memory-safe") {
             allowance := sload(allowanceSlot)
 
             if iszero(lt(allowance, amount)) {
@@ -92,7 +92,7 @@ library RouterLib {
      *   and transfer the tokens accordingly.
      */
     function transfer(address router, address token, address from, address to, uint256 amount) internal {
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
             mstore(0, shl(96, token))
@@ -138,7 +138,7 @@ library RouterLib {
         uint256 length = 256 + route.length; // 32 * 6 + 32 + 32 + route.length
         bytes memory data = new bytes(length);
 
-        assembly {
+        assembly ("memory-safe") {
             sstore(allowanceSlot, amountIn)
 
             switch exactIn

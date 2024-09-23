@@ -26,7 +26,7 @@ library TokenLib {
         uint256 success;
         uint256 returnDataSize;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, 0x70a08231) // balanceOf(address)
             mstore(32, account)
 
@@ -64,7 +64,7 @@ library TokenLib {
     function transferNative(address to, uint256 amount) internal {
         uint256 success;
 
-        assembly {
+        assembly ("memory-safe") {
             success := call(gas(), to, amount, 0, 0, 0, 0)
         }
 
@@ -84,7 +84,7 @@ library TokenLib {
     function wrap(address wnative, uint256 amount) internal {
         uint256 success;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, 0xd0e30db0) // deposit()
 
             success := call(gas(), wnative, amount, 28, 4, 0, 0)
@@ -106,7 +106,7 @@ library TokenLib {
     function unwrap(address wnative, uint256 amount) internal {
         uint256 success;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, 0x2e1a7d4d) // withdraw(uint256)
             mstore(32, amount)
 
@@ -132,7 +132,7 @@ library TokenLib {
         uint256 returnSize;
         uint256 returnValue;
 
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
             mstore(0, 0xa9059cbb) // transfer(address,uint256)
@@ -168,7 +168,7 @@ library TokenLib {
         uint256 returnSize;
         uint256 returnValue;
 
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
             let m0x60 := mload(0x60)
 
@@ -200,7 +200,7 @@ library TokenLib {
      * This function might no revert if there is no revert reason, always use it in conjunction with a revert.
      */
     function _tryRevertWithReason() private pure {
-        assembly {
+        assembly ("memory-safe") {
             if returndatasize() {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())

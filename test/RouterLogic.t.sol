@@ -39,14 +39,14 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     fallback() external {
         bytes memory data = revertData;
         if (data.length > 0) {
-            assembly {
+            assembly ("memory-safe") {
                 revert(add(data, 32), mload(data))
             }
         }
 
         uint256 cdatasize;
 
-        assembly {
+        assembly ("memory-safe") {
             cdatasize := calldatasize()
         }
 
@@ -55,7 +55,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
             address to;
             uint256 amount;
 
-            assembly {
+            assembly ("memory-safe") {
                 token := shr(96, calldataload(0))
                 to := shr(96, calldataload(40))
                 amount := calldataload(60)
@@ -65,7 +65,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         } else {
             data = abi.encode(1e18, 1e18);
 
-            assembly {
+            assembly ("memory-safe") {
                 return(add(data, 32), mload(data))
             }
         }
@@ -445,7 +445,7 @@ contract MockLBPair {
         }
 
         if (v2_0) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(0, amountX)
                 mstore(32, amountY)
 
@@ -454,7 +454,7 @@ contract MockLBPair {
         } else {
             require(amountX <= type(uint128).max && amountY <= type(uint128).max, "overflow");
 
-            assembly {
+            assembly ("memory-safe") {
                 let v := or(shl(128, amountY), amountX)
 
                 mstore(0, v)

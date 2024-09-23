@@ -135,7 +135,7 @@ contract Router is Ownable2Step, IRouter {
             );
 
             if (bytes4(data) == IRouter.Router__SimulateSingle.selector) {
-                assembly {
+                assembly ("memory-safe") {
                     mstore(add(amounts, mul(i, 32)), mload(add(data, 36)))
                 }
             } else {

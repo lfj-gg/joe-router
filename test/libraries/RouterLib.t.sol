@@ -25,7 +25,7 @@ contract RouterLibTest is Test {
     uint256 _allowance;
 
     modifier verifyMemory() {
-        assembly {
+        assembly ("memory-safe") {
             sstore(_mem0x40.slot, 0x40)
             sstore(_mem0x60.slot, 0x60)
             sstore(_mem0x80.slot, 0x80)
@@ -37,7 +37,7 @@ contract RouterLibTest is Test {
         uint256 mem0x60;
         uint256 mem0x80;
 
-        assembly {
+        assembly ("memory-safe") {
             mem0x40 := sload(_mem0x40.slot)
             mem0x60 := sload(_mem0x60.slot)
             mem0x80 := sload(_mem0x80.slot)
@@ -65,7 +65,7 @@ contract RouterLibTest is Test {
 
             bytes32 key;
 
-            assembly {
+            assembly ("memory-safe") {
                 mstore(0, calldataload(16))
                 mstore(20, shl(96, caller()))
                 calldatacopy(40, 144, 20)
@@ -78,7 +78,7 @@ contract RouterLibTest is Test {
             _allowance = _allowances[key];
         } else {
             bytes memory data = _data;
-            assembly {
+            assembly ("memory-safe") {
                 revert(add(data, 32), mload(data))
             }
         }
@@ -87,7 +87,7 @@ contract RouterLibTest is Test {
     function test_Fuzz_GetAllowanceSlot(address token, address sender, address from) public {
         bytes32 slot = RouterLib.getAllowanceSlot(_allowances, token, sender, from);
 
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, 1)
         }
 
@@ -156,7 +156,7 @@ contract RouterLibTest is Test {
 
         uint256 length = bound(amount, 0, 60);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(data, length)
         }
 
@@ -165,7 +165,7 @@ contract RouterLibTest is Test {
 
         length = bound(amount, 61, 92);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(data, length)
         }
 
@@ -216,7 +216,7 @@ contract RouterLibTest is Test {
 
         uint256 length = _data.length;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(expectedData, length)
         }
 
@@ -250,7 +250,7 @@ contract RouterLibTest is Test {
     function callSelf(bytes memory data) public verifyMemory {
         (bool success,) = address(this).call(data);
         if (!success) {
-            assembly {
+            assembly ("memory-safe") {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())
             }

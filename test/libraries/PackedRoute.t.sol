@@ -57,13 +57,13 @@ contract PackedRouteTest is Test {
 
     function test_Fuzz_NextPrevious(address[] memory tokens, bytes26[] memory details) public view {
         if (tokens.length > 32) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(tokens, 32)
             }
         }
 
         if (details.length > 32) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(details, 32)
             }
         }
@@ -75,14 +75,14 @@ contract PackedRouteTest is Test {
         unchecked {
             uint256 ptr_ = PackedRoute.TOKENS_OFFSET;
             for (uint256 i = 0; i < tokens.length; i++) {
-                assembly {
+                assembly ("memory-safe") {
                     mstore(add(add(route, 32), ptr_), shl(96, mload(add(tokens, add(32, mul(i, 32))))))
                 }
                 ptr_ += PackedRoute.ADDRESS_SIZE;
             }
 
             for (uint256 i = 0; i < details.length; i++) {
-                assembly {
+                assembly ("memory-safe") {
                     mstore(add(add(route, 32), ptr_), mload(add(details, add(32, mul(i, 32)))))
                 }
                 ptr_ += PackedRoute.ROUTE_SIZE;

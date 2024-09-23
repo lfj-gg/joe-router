@@ -23,7 +23,7 @@ library PairInteraction {
      */
     function getReservesUV2(address pair, bool ordered) internal view returns (uint256 reserveIn, uint256 reserveOut) {
         uint256 returnDataSize;
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, 0x0902f1ac) // getReserves()
 
             if staticcall(gas(), pair, 28, 4, 0, 64) { returnDataSize := returndatasize() }
@@ -50,7 +50,7 @@ library PairInteraction {
      * - The call must succeed.
      */
     function swapUV2(address pair, uint256 amount0, uint256 amount1, address recipient) internal {
-        assembly {
+        assembly ("memory-safe") {
             let ptr := mload(0x40)
 
             mstore(ptr, 0x022c0d9f) // swap(uint256,uint256,address,bytes)
@@ -84,7 +84,7 @@ library PairInteraction {
         returns (uint256 amountIn)
     {
         uint256 returnDataSize;
-        assembly {
+        assembly ("memory-safe") {
             let ptr := mload(0x40)
 
             mstore(ptr, 0x5bdd4b7c) // getSwapIn(address,uint256,bool)
@@ -118,7 +118,7 @@ library PairInteraction {
     function swapLegacyLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
 
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
             mstore(0, 0x53c059a0) // swap(bool,address)
@@ -156,7 +156,7 @@ library PairInteraction {
         returns (uint256 amountIn, uint256 amountLeft)
     {
         uint256 returnDataSize;
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
             mstore(0, 0xabcd7830) // getSwapIn(uint128,bool)
@@ -190,7 +190,7 @@ library PairInteraction {
     function swapLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
 
-        assembly {
+        assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
             mstore(0, 0x53c059a0) // swap(bool,address)
@@ -227,7 +227,7 @@ library PairInteraction {
     function getSwapInUV3(address pair, bool zeroForOne, uint256 amountOut) internal returns (uint256 amountIn) {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
 
-        assembly {
+        assembly ("memory-safe") {
             // RouterAdapter__UniswapV3SwapCallbackOnly(int256,int256)
             switch and(eq(shr(224, mload(ptr)), 0xcbdb9bb5), iszero(success))
             case 0 {
@@ -258,7 +258,7 @@ library PairInteraction {
 
         uint256 returnDataSize;
 
-        assembly {
+        assembly ("memory-safe") {
             if iszero(success) {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())
@@ -290,7 +290,7 @@ library PairInteraction {
     {
         uint256 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3;
 
-        assembly {
+        assembly ("memory-safe") {
             ptr := mload(0x40)
 
             mstore(ptr, 0x128acb08) // swap(address,bool,int256,uint160,bytes)

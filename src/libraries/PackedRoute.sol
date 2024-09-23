@@ -192,7 +192,7 @@ library PackedRoute {
      * Always use `start` to validate the route length before calling this function.
      */
     function isTransferTax(bytes calldata route) internal pure returns (bool b) {
-        assembly {
+        assembly ("memory-safe") {
             b := iszero(iszero(shr(IS_TRANSFER_TAX_SHIFT, calldataload(add(route.offset, IS_TRANSFER_TAX_OFFSET)))))
         }
     }
@@ -203,7 +203,7 @@ library PackedRoute {
      * Always use `start` to validate the route length before calling this function.
      */
     function token(bytes calldata route, uint256 id) internal pure returns (address t) {
-        assembly {
+        assembly ("memory-safe") {
             t := shr(ADDRESS_SHIFT, calldataload(add(route.offset, add(TOKENS_OFFSET, mul(id, ADDRESS_SIZE)))))
         }
     }
@@ -214,7 +214,7 @@ library PackedRoute {
      * For the route to be valid, its length must equal `TOKENS_OFFSET + nbTokens * ADDRESS_SIZE + nbSwaps * ROUTE_SIZE`.
      */
     function start(bytes calldata route) internal pure returns (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) {
-        assembly {
+        assembly ("memory-safe") {
             nbTokens := shr(248, calldataload(route.offset))
         }
 
@@ -235,7 +235,7 @@ library PackedRoute {
      * Always use `start` to validate the route length before calling this function.
      */
     function next(bytes calldata route, uint256 ptr) internal pure returns (uint256 nextPtr, bytes32 value) {
-        assembly {
+        assembly ("memory-safe") {
             value := calldataload(add(route.offset, ptr))
             nextPtr := add(ptr, ROUTE_SIZE)
         }
@@ -247,7 +247,7 @@ library PackedRoute {
      * Always use `start` to validate the route length before calling this function.
      */
     function previous(bytes calldata route, uint256 ptr) internal pure returns (uint256 previousPtr, bytes32 value) {
-        assembly {
+        assembly ("memory-safe") {
             previousPtr := sub(ptr, ROUTE_SIZE)
             value := calldataload(add(route.offset, previousPtr))
         }
@@ -261,7 +261,7 @@ library PackedRoute {
         pure
         returns (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId)
     {
-        assembly {
+        assembly ("memory-safe") {
             pair := shr(ADDRESS_SHIFT, value)
             percent := and(shr(PERCENT_SHIFT, value), UINT16_MASK)
             flags := and(shr(FLAGS_SHIFT, value), UINT16_MASK)

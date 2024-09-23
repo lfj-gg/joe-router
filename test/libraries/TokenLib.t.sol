@@ -22,7 +22,7 @@ contract TokenLibTest is Test {
     bytes _data;
 
     modifier verifyMemory() {
-        assembly {
+        assembly ("memory-safe") {
             sstore(_mem0x40.slot, 0x40)
             sstore(_mem0x60.slot, 0x60)
             sstore(_mem0x80.slot, 0x80)
@@ -34,7 +34,7 @@ contract TokenLibTest is Test {
         uint256 mem0x60;
         uint256 mem0x80;
 
-        assembly {
+        assembly ("memory-safe") {
             mem0x40 := sload(_mem0x40.slot)
             mem0x60 := sload(_mem0x60.slot)
             mem0x80 := sload(_mem0x80.slot)
@@ -57,7 +57,7 @@ contract TokenLibTest is Test {
         bytes memory data = _data;
 
         if (_revert) {
-            assembly {
+            assembly ("memory-safe") {
                 revert(add(data, 0x20), mload(data))
             }
         }

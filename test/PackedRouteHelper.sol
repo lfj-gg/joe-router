@@ -26,11 +26,11 @@ abstract contract PackedRouteHelper {
 
         b = new bytes(length + 32); // Safety margin with the free memory pointer
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(b, length)
         }
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(add(b, 32), shl(248, nbTokens))
         }
     }
@@ -40,7 +40,7 @@ abstract contract PackedRouteHelper {
         pure
         returns (uint256)
     {
-        assembly {
+        assembly ("memory-safe") {
             mstore(add(add(b, 32), ptr), shl(248, isTransferTaxToken))
         }
         return ptr + 1;
@@ -52,7 +52,7 @@ abstract contract PackedRouteHelper {
 
         _tokenToId[token] = id + 1;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(add(add(b, 32), ptr), shl(96, token))
         }
         return ptr + PackedRoute.ADDRESS_SIZE;
@@ -70,7 +70,7 @@ abstract contract PackedRouteHelper {
         uint256 tokenInId = _tokenToId[tokenIn] - 1;
         uint256 tokenOutId = _tokenToId[tokenOut] - 1;
 
-        assembly {
+        assembly ("memory-safe") {
             let value :=
                 or(shl(96, pair), or(shl(80, percent), or(shl(64, flags), or(shl(56, tokenInId), shl(48, tokenOutId)))))
             mstore(add(add(b, 32), ptr), value)

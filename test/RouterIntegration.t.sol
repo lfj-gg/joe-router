@@ -122,7 +122,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         {
             uint256[] memory values;
 
-            assembly {
+            assembly ("memory-safe") {
                 values := add(data, 68)
             }
 
@@ -193,7 +193,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         {
             uint256[] memory values;
 
-            assembly {
+            assembly ("memory-safe") {
                 values := add(data, 68)
             }
 
