@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import "../src/Router.sol";
 import "../src/RouterLogic.sol";
 import "./PackedRouteHelper.sol";
+import "./mocks/MockERC20.sol";
 
 contract RouterIntegrationTest is Test, PackedRouteHelper {
     Router public router;

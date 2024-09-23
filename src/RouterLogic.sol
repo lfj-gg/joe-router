@@ -1,19 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import {TokenLib} from "./libraries/TokenLib.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
 import {RouterAdapter} from "./RouterAdapter.sol";
 import {PackedRoute} from "./libraries/PackedRoute.sol";
 import {Flags} from "./libraries/Flags.sol";
-import {IRouter} from "./interfaces/IRouter.sol";
 import {IRouterLogic} from "./interfaces/IRouterLogic.sol";
 
 contract RouterLogic is RouterAdapter, IRouterLogic {
-    using SafeERC20 for IERC20;
-
     address private immutable _router;
 
     uint256 internal constant BPS = 10000;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 
 import "../src/Router.sol";
+import "../src/RouterLogic.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/WNative.sol";
 
