@@ -59,10 +59,10 @@ pragma solidity ^0.8.20;
  * {UNIV3-WETH/WAVAX,  8000, UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
  * {LB2.1-WETH/USDC,   2000,            LB2_1_ID | ZERO_FOR_ONE, 0, 2}
  * {UNIV2-WAVAX/USDC,  7000,            UNIV2_ID | ZERO_FOR_ONE, 1, 2}
- * {UNIV3-BTC/USDC,    6000, UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 1, 3}
+ * {UNIV3-BTC/USDC,    6000, UNIV3_ID | CALLBACK | ONE_FOR_ZERO, 1, 3}
  * {UNIV2-BTC/USDT,   10000,            UNIV2_ID | ZERO_FOR_ONE, 3, 4}
- * {LB2.2-WAVAX/USDT,  3000,            LB2_0_ID | ONE_FOR_ZERO, 1, 4}
- * {LB2.1-USDC/USDT,   4000,            LB2_2_ID | ONE_FOR_ZERO, 2, 4}
+ * {LB2.0-WAVAX/USDT,  3000,            LB2_0_ID | ZERO_FOR_ONE, 1, 4}
+ * {LB2.2-USDC/USDT,   4000,            LB2_2_ID | ZERO_FOR_ONE, 2, 4}
  *
  * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token balance.
  *
@@ -71,8 +71,8 @@ pragma solidity ^0.8.20;
  * UNIV2-WAVAX/USDC = 0.7
  * UNIV3-BTC/USDC = 0.6
  * UNIV2-BTC/USDT = 1.0
- * LB2.2-WAVAX/USDT = 0.3 / (1 - 0.7) = 1.0 (we force it to 1 as it's the last swap to USDT)
- * LB2.1-USDC/USDT = 0.4 / (1 - 0.6) = 1.0 (we force it to 1 as it's the last swap to USDT)
+ * LB2.0-WAVAX/USDT = 0.3 / (1 - 0.7) = 1.0 (we force it to 1 as it's the last swap to USDT)
+ * LB2.2-USDC/USDT = 0.4 / (1 - 0.6) = 1.0 (we force it to 1 as it's the last swap to USDT)
  *
  * Final encoding:
  *
@@ -81,10 +81,10 @@ pragma solidity ^0.8.20;
  * {UNIV3-WETH/WAVAX,  8000, UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
  * {LB2.1-WETH/USDC,  10000,            LB2_1_ID | ZERO_FOR_ONE, 0, 2}
  * {UNIV2-WAVAX/USDC,  7000,            UNIV2_ID | ZERO_FOR_ONE, 1, 2}
- * {UNIV3-BTC/USDC,    6000, UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 1, 3}
+ * {UNIV3-BTC/USDC,    6000, UNIV3_ID | CALLBACK | ONE_FOR_ZERO, 1, 3}
  * {UNIV2-BTC/USDT,   10000,            UNIV2_ID | ZERO_FOR_ONE, 3, 4}
- * {LB2.2-WAVAX/USDT, 10000,            LB2_0_ID | ONE_FOR_ZERO, 1, 4}
- * {LB2.1-USDC/USDT,  10000,            LB2_2_ID | ONE_FOR_ZERO, 2, 4}
+ * {LB2.0-WAVAX/USDT, 10000,            LB2_0_ID | ZERO_FOR_ONE, 1, 4}
+ * {LB2.2-USDC/USDT,  10000,            LB2_2_ID | ZERO_FOR_ONE, 2, 4}
  *
  * Example 2, swapExactOut:
  * User wants to swap WETH to X USDT using the same route, we need to calculate the weights in the opposite direction:
@@ -138,19 +138,19 @@ pragma solidity ^0.8.20;
  *
  *              0     1     2     3     4
  * [5][false, WETH, WAVAX, USDC, BTC, USDT] // 5 tokens, WETH is not a transfer tax token
- * {UNIV3-WETH/WAVAX,  10000, UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
- * {LB2.1-WETH/USDC,   2000,             LB2_1_ID | ZERO_FOR_ONE, 0, 2}
+ * {UNIV3-WETH/WAVAX, 10000,  UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
+ * {LB2.1-WETH/USDC,   2600,             LB2_1_ID | ZERO_FOR_ONE, 0, 2}
  * {UNIV2-WAVAX/USDC,  7400,             UNIV2_ID | ZERO_FOR_ONE, 1, 2}
- * {UNIV3-BTC/USDC,   10000,  UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 1, 3}
+ * {UNIV3-BTC/USDC,   10000,  UNIV3_ID | CALLBACK | ONE_FOR_ZERO, 1, 3}
  * {UNIV2-BTC/USDT,    4600,             UNIV2_ID | ZERO_FOR_ONE, 3, 4}
- * {LB2.2-WAVAX/USDT,  3000,             LB2_0_ID | ONE_FOR_ZERO, 1, 4}
- * {LB2.1-USDC/USDT,   2400,             LB2_2_ID | ONE_FOR_ZERO, 2, 4}
+ * {LB2.2-USDC/USDT,   3000,             LB2_2_ID | ZERO_FOR_ONE, 2, 4}
+ * {LB2.0-WAVAX/USDT,  2400,             LB2_0_ID | ZERO_FOR_ONE, 1, 4}
  *
  * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token balance.
  * We start from the last token, USDT, and up to the first token, WETH.
  *
- * LB2.1-USDC/USDT = 0.24
- * LB2.2-WAVAX/USDT = 0.3 / (1 - 0.24) ~= 0.3947
+ * LB2.0-WAVAX/USDT = 0.24
+ * LB2.2-USDC/USDT = 0.3 / (1 - 0.24) ~= 0.3947
  * UNIV2-BTC/USDT = 0.46 / ((1 - 0.24) * (1 - 0.3947)) = 1.0 (we force it to 1 as it's the last swap from USDT)
  * UNIV3-BTC/USDC = 1.0 (single route)
  * UNIV2-WAVAX/USDC = 0.74
@@ -161,13 +161,13 @@ pragma solidity ^0.8.20;
  *
  *              0     1     2     3     4
  * [5][false, WETH, WAVAX, USDC, BTC, USDT]
- * {UNIV3-WETH/WAVAX,  10000,  UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
- * {LB2.1-WETH/USDC,    2000,             LB2_1_ID | ZERO_FOR_ONE, 0, 2}
- * {UNIV2-WAVAX/USDC,   7400,             UNIV2_ID | ZERO_FOR_ONE, 1, 2}
- * {UNIV3-BTC/USDC,    10000,  UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 1, 3}
- * {UNIV2-BTC/USDT,    10000,             UNIV2_ID | ZERO_FOR_ONE, 3, 4}
- * {LB2.2-WAVAX/USDT,   3947,             LB2_0_ID | ONE_FOR_ZERO, 1, 4}
- * {LB2.1-USDC/USDT,    2400,             LB2_2_ID | ONE_FOR_ZERO, 2, 4}
+ * {UNIV3-WETH/WAVAX, 10000,  UNIV3_ID | CALLBACK | ZERO_FOR_ONE, 0, 1}
+ * {LB2.1-WETH/USDC,  10000,             LB2_1_ID | ZERO_FOR_ONE, 0, 2}
+ * {UNIV2-WAVAX/USDC,  7400,             UNIV2_ID | ZERO_FOR_ONE, 1, 2}
+ * {UNIV3-BTC/USDC,   10000,  UNIV3_ID | CALLBACK | ONE_FOR_ZERO, 1, 3}
+ * {UNIV2-BTC/USDT,   10000,             UNIV2_ID | ZERO_FOR_ONE, 3, 4}
+ * {LB2.2-USDC/USDT,   3947,             LB2_2_ID | ZERO_FOR_ONE, 2, 4}
+ * {LB2.0-WAVAX/USDT,  2400,             LB2_0_ID | ZERO_FOR_ONE, 1, 4}
  */
 library PackedRoute {
     error PackedRoute__InvalidLength();
