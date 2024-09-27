@@ -338,14 +338,6 @@ contract RouterTest is Test {
         router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
         vm.stopPrank();
 
-        route = abi.encode(amountIn, amountOutMin, amountIn - 1, amountOutMin);
-
-        vm.startPrank(alice);
-        token0.approve(address(router), amountIn);
-        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__InvalidTotalIn.selector, amountIn - 1, amountIn));
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
-        vm.stopPrank();
-
         route = abi.encode(amountIn, amountOutMin - 1);
 
         vm.startPrank(alice);
@@ -391,14 +383,6 @@ contract RouterTest is Test {
         vm.stopPrank();
 
         route = abi.encode(amountInMax, amountOut, amountInMax + 1, amountOut);
-
-        vm.startPrank(alice);
-        token0.approve(address(router), amountInMax);
-        vm.expectRevert(
-            abi.encodeWithSelector(IRouter.Router__MaxAmountInExceeded.selector, amountInMax + 1, amountInMax)
-        );
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
-        vm.stopPrank();
 
         route = abi.encode(amountInMax, amountOut - 1);
 

@@ -5,8 +5,6 @@ interface IRouter {
     error Router__DeadlineExceeded();
     error Router__InsufficientOutputAmount(uint256 outputAmount, uint256 minOutputAmount);
     error Router__InsufficientAmountReceived(uint256 balanceBefore, uint256 balanceAfter, uint256 amountOutMin);
-    error Router__InvalidTotalIn(uint256 amountIn, uint256 expectedAmountIn);
-    error Router__MaxAmountInExceeded(uint256 amountIn, uint256 maxAmountIn);
     error Router__InvalidTo();
     error Router__ZeroAmount();
     error Router__OnlyWnative();

@@ -257,12 +257,6 @@ contract Router is Ownable2Step, IRouter {
         (totalIn, totalOut) =
             RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, _logic);
 
-        if (exactIn) {
-            if (totalIn != amountIn) revert Router__InvalidTotalIn(totalIn, amountIn);
-        } else {
-            if (totalIn > amountIn) revert Router__MaxAmountInExceeded(totalIn, amountIn);
-        }
-
         if (recipient == address(this)) {
             TokenLib.unwrap(WNATIVE, totalOut);
             TokenLib.transferNative(to, totalOut);
