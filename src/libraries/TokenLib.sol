@@ -12,8 +12,6 @@ library TokenLib {
     error TokenLib__NativeTransferFailed();
     error TokenLib__TransferFromFailed();
     error TokenLib__TransferFailed();
-    error TokenLib__NoCode(address target);
-    error TokenLib__RouterTransferFailed();
 
     /**
      * @dev Returns the balance of a token for an account.
