@@ -17,6 +17,11 @@ contract Router is Ownable2Step, IRouter {
 
     address private _logic;
 
+    /**
+     * @dev The allowances represent the maximum amount of tokens that the logic contract can spend on behalf of the sender.
+     * It is always reseted at the end of the swap.
+     * The key is calculated as keccak256(abi.encodePacked(token, sender, user)).
+     */
     mapping(bytes32 key => uint256 allowance) private _allowances;
 
     /**

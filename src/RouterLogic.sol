@@ -178,6 +178,8 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
     /**
      * @dev Helper function to return the amountIn for each swap in the route and the amountIn of the first token.
+     * The function will most likely revert if the same pair is used twice, or if the output of a pair is changed
+     * between the calculation and the actual swap (for example, before swap hooks).
      *
      * Requirements:
      * - The route must be a valid route, following the PackedRoute format.
