@@ -360,4 +360,41 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         assertEq(alice.balance, 0.1e18 + totalOut, "test_SwapExactOutTokenToNative::3");
         assertEq(IERC20(USDT).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToNative::4");
     }
+
+    function test_UV3OutOfLiquidity() public {
+        MockERC20 t0 = new MockERC20("T0", "T0", 18);
+        MockERC20 t1 = new MockERC20("T1", "T1", 18);
+
+        vm.label(address(t0), "Token0");
+        vm.label(address(t1), "Token1");
+
+        address pool = IV3Factory(0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD).createPool(address(t0), address(t1), 3000);
+        IV3Pool(pool).initialize(2 ** 96);
+        int24 tickSpacing = IV3Pool(pool).tickSpacing();
+
+        int24 tickA = -tickSpacing;
+        int24 tickB = tickSpacing;
+
+        IV3Pool(pool).mint(address(this), tickA, tickB, 1e16, abi.encode(t0, t1));
+
+        uint128 amountIn = 1e24;
+
+        MockERC20(t0).mint(alice, amountIn);
+
+        uint16 order = IV3Pool(pool).token0() == address(t0) ? ZERO_FOR_ONE : ONE_FOR_ZERO;
+
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
+
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(t0));
+        ptr = _setToken(route, ptr, address(t1));
+        ptr = _setRoute(route, ptr, address(t0), address(t1), pool, 1e4, UV3_ID | CALLBACK | order);
+
+        vm.startPrank(alice);
+        IERC20(address(t0)).approve(address(router), amountIn);
+
+        vm.expectRevert(RouterAdapter.RouterAdapter__UnexpectedAmountIn.selector);
+        router.swapExactIn(address(t0), address(t1), amountIn, 0, alice, block.timestamp, route);
+        vm.stopPrank();
+    }
 }

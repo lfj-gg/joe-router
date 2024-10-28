@@ -252,7 +252,7 @@ library PairInteraction {
      */
     function swapUV3(address pair, address recipient, bool zeroForOne, uint256 amountIn, address tokenIn)
         internal
-        returns (uint256 amount)
+        returns (uint256 actualAmountOut, uint256 actualAmountIn, uint256 expectedHash)
     {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, recipient, zeroForOne, int256(amountIn), tokenIn);
 
@@ -266,14 +266,41 @@ library PairInteraction {
 
             returnDataSize := returndatasize()
 
-            switch zeroForOne
-            case 1 { amount := mload(add(ptr, 32)) }
-            default { amount := mload(ptr) }
+            mstore(add(ptr, 64), tokenIn)
+            expectedHash := keccak256(ptr, 96)
 
-            amount := sub(0, amount) // Invert the sign
+            switch zeroForOne
+            case 1 {
+                actualAmountIn := mload(ptr)
+                actualAmountOut := mload(add(ptr, 32))
+            }
+            default {
+                actualAmountOut := mload(ptr)
+                actualAmountIn := mload(add(ptr, 32))
+            }
+
+            actualAmountOut := sub(0, actualAmountOut) // Invert the sign
         }
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
+    }
+
+    /**
+     * @dev Returns the hash of the amount deltas and token address for a Uniswap V3 pair.
+     * The hash is used to check that the callback contains the expected data.
+     */
+    function hashUV3(int256 amount0Delta, int256 amount1Delta, address token) internal pure returns (uint256 hash) {
+        assembly {
+            let ptr := mload(0x40)
+
+            mstore(0, amount0Delta)
+            mstore(32, amount1Delta)
+            mstore(64, token)
+
+            hash := keccak256(0, 96)
+
+            mstore(0x40, ptr)
+        }
     }
 
     /**

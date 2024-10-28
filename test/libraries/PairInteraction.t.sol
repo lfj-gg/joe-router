@@ -277,11 +277,15 @@ contract PairInteractionTest is Test {
         _case = 0;
         _data = abi.encode(amount0, amount1);
 
-        uint256 amount = this.swapUV3(address(this), recipient, zeroForOne, amountIn, tokenIn);
+        (uint256 amount, uint256 actualAmountIn, uint256 hash) =
+            this.swapUV3(address(this), recipient, zeroForOne, amountIn, tokenIn);
 
         unchecked {
             assertEq(amount, zeroForOne ? uint256(-amount1) : uint256(-amount0), "test_Fuzz_SwapUV3::1");
+            assertEq(actualAmountIn, zeroForOne ? uint256(amount0) : uint256(amount1), "test_Fuzz_SwapUV3::2");
         }
+
+        assertEq(hash, uint256(keccak256(abi.encode(amount0, amount1, tokenIn))), "test_Fuzz_SwapUV3::3");
 
         assertEq(
             _msgData,
@@ -293,7 +297,7 @@ contract PairInteractionTest is Test {
                 zeroForOne ? PairInteraction.MIN_SWAP_SQRT_RATIO_UV3 : PairInteraction.MAX_SWAP_SQRT_RATIO_UV3,
                 abi.encode(tokenIn)
             ),
-            "test_Fuzz_SwapUV3::2"
+            "test_Fuzz_SwapUV3::4"
         );
     }
 
@@ -352,7 +356,7 @@ contract PairInteractionTest is Test {
 
     function swapUV3(address pair, address recipient, bool zeroForOne, uint256 amountIn, address tokenIn)
         external
-        returns (uint256)
+        returns (uint256 amountOut, uint256 actualAmountIn, uint256 hash)
     {
         return PairInteraction.swapUV3(pair, recipient, zeroForOne, amountIn, tokenIn);
     }

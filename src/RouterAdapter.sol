@@ -14,10 +14,12 @@ abstract contract RouterAdapter {
     error RouterAdapter__InvalidId();
     error RouterAdapter__InsufficientLBLiquidity();
     error RouterAdapter__UniswapV3SwapCallbackOnly(int256 amount0Delta, int256 amount1Delta);
+    error RouterAdapter__UnexpectedCallback();
+    error RouterAdapter__UnexpectedAmountIn();
 
     address private immutable _routerV2_0;
 
-    address private _callback = address(0xdead);
+    uint256 private _callbackData = 0xdead;
 
     /**
      * @dev Constructor for the RouterAdapter contract.
@@ -153,11 +155,19 @@ abstract contract RouterAdapter {
      */
     function _swapUV3(address pair, uint256 flags, address recipient, uint256 amountIn, address tokenIn)
         internal
-        returns (uint256 amountOut)
+        returns (uint256)
     {
-        _callback = pair;
+        _callbackData = uint160(pair);
 
-        return PairInteraction.swapUV3(pair, recipient, Flags.zeroForOne(flags), amountIn, tokenIn);
+        (uint256 amountOut, uint256 actualAmountIn, uint256 hash) =
+            PairInteraction.swapUV3(pair, recipient, Flags.zeroForOne(flags), amountIn, tokenIn);
+
+        if (_callbackData != hash) revert RouterAdapter__UnexpectedCallback();
+        if (actualAmountIn != amountIn) revert RouterAdapter__UnexpectedAmountIn();
+
+        _callbackData = 0xdead;
+
+        return amountOut;
     }
 
     /**
@@ -167,13 +177,13 @@ abstract contract RouterAdapter {
      * - The caller must be the callback address.
      */
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        if (msg.sender != _callback) revert RouterAdapter__UniswapV3SwapCallbackOnly(amount0Delta, amount1Delta);
-        _callback = address(0xdead);
+        if (uint160(msg.sender) != _callbackData) {
+            revert RouterAdapter__UniswapV3SwapCallbackOnly(amount0Delta, amount1Delta);
+        }
+        address token = address(uint160(uint256(bytes32(data))));
 
-        TokenLib.transfer(
-            address(uint160(uint256(bytes32(data)))),
-            msg.sender,
-            uint256(amount0Delta > 0 ? amount0Delta : amount1Delta)
-        );
+        _callbackData = PairInteraction.hashUV3(amount0Delta, amount1Delta, token);
+
+        TokenLib.transfer(token, msg.sender, uint256(amount0Delta > 0 ? amount0Delta : amount1Delta));
     }
 }
