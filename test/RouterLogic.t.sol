@@ -50,15 +50,15 @@ contract RouterLogicTest is Test, PackedRouteHelper {
             cdatasize := calldatasize()
         }
 
-        if (cdatasize == 92) {
+        if (cdatasize == 96) {
             address token;
             address to;
             uint256 amount;
 
             assembly ("memory-safe") {
-                token := shr(96, calldataload(0))
-                to := shr(96, calldataload(40))
-                amount := calldataload(60)
+                token := shr(96, calldataload(4))
+                to := shr(96, calldataload(44))
+                amount := calldataload(64)
             }
 
             MockERC20(token).transfer(to, amount);

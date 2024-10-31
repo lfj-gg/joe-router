@@ -59,10 +59,10 @@ library RouterLib {
 
         uint256 success;
         assembly ("memory-safe") {
-            token := shr(96, calldataload(0))
-            from := shr(96, calldataload(20))
-            to := shr(96, calldataload(40))
-            amount := calldataload(60)
+            token := shr(96, calldataload(4))
+            from := shr(96, calldataload(24))
+            to := shr(96, calldataload(44))
+            amount := calldataload(64)
         }
 
         bytes32 allowanceSlot = getAllowanceSlot(allowances, token, msg.sender, from);
@@ -77,7 +77,7 @@ library RouterLib {
             }
         }
 
-        if (amount == 0) revert RouterLib__ZeroAmount(); // Also prevent calldata <= 60
+        if (amount == 0) revert RouterLib__ZeroAmount(); // Also prevent calldata <= 64
         if (success == 0) revert RouterLib__InsufficientAllowance(allowance, amount);
 
         from == address(this) ? TokenLib.transfer(token, to, amount) : TokenLib.transferFrom(token, from, to, amount);
@@ -95,12 +95,12 @@ library RouterLib {
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
-            mstore(0, shl(96, token))
-            mstore(20, shl(96, from))
-            mstore(40, shl(96, to))
-            mstore(60, amount)
+            mstore(0, shr(32, shl(96, token)))
+            mstore(24, shl(96, from))
+            mstore(44, shl(96, to))
+            mstore(64, amount)
 
-            if iszero(call(gas(), router, 0, 0, 92, 0, 0)) {
+            if iszero(call(gas(), router, 0, 0, 96, 0, 0)) {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())
             }

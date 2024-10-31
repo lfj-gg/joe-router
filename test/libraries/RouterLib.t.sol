@@ -154,7 +154,7 @@ contract RouterLibTest is Test {
 
         bytes memory data = abi.encode(type(uint256).max, type(uint256).max, type(uint256).max); // 96
 
-        uint256 length = bound(amount, 0, 60);
+        uint256 length = bound(amount, 0, 64);
 
         assembly ("memory-safe") {
             mstore(data, length)
@@ -163,13 +163,13 @@ contract RouterLibTest is Test {
         vm.expectRevert(RouterLib.RouterLib__ZeroAmount.selector);
         this.callSelf(data);
 
-        length = bound(amount, 61, 92);
+        length = bound(amount, 65, 96);
 
         assembly ("memory-safe") {
             mstore(data, length)
         }
 
-        uint256 shift = (92 - length) * 8;
+        uint256 shift = (96 - length) * 8;
         vm.expectRevert(
             abi.encodeWithSelector(
                 RouterLib.RouterLib__InsufficientAllowance.selector, 0, (type(uint256).max >> shift) << shift

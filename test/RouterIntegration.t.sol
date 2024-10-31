@@ -397,4 +397,23 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         router.swapExactIn(address(t0), address(t1), amountIn, 0, alice, block.timestamp, route);
         vm.stopPrank();
     }
+
+    function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external {
+        (address token0, address token1) = abi.decode(data, (address, address));
+        MockERC20(token0).mint(msg.sender, uint256(amount0Owed));
+        MockERC20(token1).mint(msg.sender, uint256(amount1Owed));
+    }
+}
+
+interface IV3Factory {
+    function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool);
+}
+
+interface IV3Pool {
+    function token0() external view returns (address);
+    function initialize(uint160 sqrtPriceX96) external;
+    function tickSpacing() external view returns (int24);
+    function mint(address recipient, int24 tickLower, int24 tickUpper, uint128 amount, bytes calldata data)
+        external
+        returns (uint256 amount0, uint256 amount1);
 }
