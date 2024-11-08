@@ -117,7 +117,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             multiRoutes[1] = route;
 
             (, bytes memory data) = address(router).call{value: 0.1e18}(
-                abi.encodeWithSelector(IRouter.simulate.selector, logic, WETH, USDT, amountIn, 0, true, multiRoutes)
+                abi.encodeWithSelector(IRouter.simulate.selector, logic, WETH, USDT, amountIn, 1, true, multiRoutes)
             );
 
             uint256[] memory values;
@@ -134,7 +134,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         }
 
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: 0.1e18}(address(logic), WETH, USDT, amountIn, 0, alice, block.timestamp, route);
+            router.swapExactIn{value: 0.1e18}(address(logic), WETH, USDT, amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToToken::4");
@@ -243,7 +243,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: amountIn + 0.1e18}(
-            address(logic), address(0), USDT, amountIn, 0, alice, block.timestamp, route
+            address(logic), address(0), USDT, amountIn, 1, alice, block.timestamp, route
         );
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToToken::1");
@@ -316,7 +316,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.startPrank(alice);
         IERC20(USDT).approve(address(router), amountIn);
         (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: 0.1e18}(
-            address(logic), USDT, address(0), amountIn, 0, alice, block.timestamp, route
+            address(logic), USDT, address(0), amountIn, 1, alice, block.timestamp, route
         );
         vm.stopPrank();
 
@@ -398,8 +398,76 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         IERC20(address(t0)).approve(address(router), amountIn);
 
         vm.expectRevert(RouterAdapter.RouterAdapter__UnexpectedAmountIn.selector);
-        router.swapExactIn(address(logic), address(t0), address(t1), amountIn, 0, alice, block.timestamp, route);
+        router.swapExactIn(address(logic), address(t0), address(t1), amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
+    }
+
+    function test_Edge_3() public {
+        address token1 = USDC;
+        address wnative = WAVAX;
+        address lbPairETH = LB1_AVAX_USDC;
+        address bob = makeAddr("Bob");
+
+        uint128 amountIn = 10 ether;
+        deal(alice, 100 ether);
+        deal(address(token1), address(lbPairETH), IERC20(token1).balanceOf(lbPairETH) + 100e6);
+        deal(address(wnative), address(lbPairETH), IERC20(wnative).balanceOf(lbPairETH) + 10e18);
+
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
+
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, address(wnative));
+        ptr = _setToken(route, ptr, address(token1));
+        ptr =
+            _setRoute(route, ptr, address(wnative), address(token1), address(lbPairETH), 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        vm.startPrank(alice);
+        bytes memory data = abi.encodeCall(
+            Router.swapExactIn,
+            (address(logic), address(0), address(token1), amountIn, 1, bob, type(uint256).max, route)
+        );
+        (bool s,) = address(router).call{value: amountIn}(data);
+        require(s, "failed");
+        vm.stopPrank();
+        console.log("Bob's eth balance after swap: ", address(bob).balance);
+        console.log("Bob's token1 balance after swap: ", IERC20(token1).balanceOf(address(bob)));
+        console.log("Bob's wnative balance after swap: ", IERC20(wnative).balanceOf(address(bob)));
+    }
+
+    function test_Swap_Edge2() public {
+        uint128 amountIn = 100e6;
+
+        deal(USDC, alice, amountIn);
+
+        (bytes memory route, uint256 ptr) = _createRoutes(4, 3);
+
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, WAVAX);
+        ptr = _setToken(route, ptr, WETH);
+        ptr = _setToken(route, ptr, USDT);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, LB1_AVAX_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WAVAX, WETH, LB1_AVAX_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WETH, USDT, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+
+        uint256 xord = (uint256(uint160(WETH)) << 96) ^ (uint256(uint160(USDC)) << 96);
+        assembly {
+            let p := add(0x22, mul(2, 20))
+            let v := mload(add(route, p))
+            log0(add(route, 0x20), mload(route))
+            mstore(add(route, p), xor(v, xord))
+            log0(add(route, 0x20), mload(route))
+        }
+
+        vm.startPrank(alice);
+        IERC20(USDC).approve(address(router), amountIn);
+        router.swapExactOut(
+            address(logic), USDC, USDT, amountIn / 2, type(uint256).max, alice, type(uint256).max, route
+        );
+        vm.stopPrank();
+
+        IERC20(USDC).balanceOf(address(logic));
+        IERC20(WAVAX).balanceOf(address(logic));
+        IERC20(USDT).balanceOf(address(logic));
     }
 
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external {

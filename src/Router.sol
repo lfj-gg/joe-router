@@ -94,7 +94,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     ) external payable override nonReentrant returns (uint256 totalIn, uint256 totalOut) {
         if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
 
-        _verifyParameters(tokenIn, tokenOut, amountIn, to, deadline);
+        _verifyParameters(amountIn, amountOutMin, to, deadline);
 
         (totalIn, totalOut) = _swap(logic, tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, route, true);
 
@@ -125,7 +125,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
         uint256 deadline,
         bytes calldata route
     ) external payable override nonReentrant returns (uint256 totalIn, uint256 totalOut) {
-        _verifyParameters(tokenIn, tokenOut, amountOut, to, deadline);
+        _verifyParameters(amountInMax, amountOut, to, deadline);
 
         (totalIn, totalOut) = _swap(logic, tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, route, false);
 
@@ -217,17 +217,12 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
      * Requirements:
      * - The recipient address must not be zero or the router address.
      * - The deadline must not have passed.
-     * - The input token and output token must not be the same.
-     * - The amount must not be zero.
+     * - The amounts must not be zero.
      */
-    function _verifyParameters(address tokenIn, address tokenOut, uint256 amount, address to, uint256 deadline)
-        internal
-        view
-    {
+    function _verifyParameters(uint256 amountIn, uint256 amountOut, address to, uint256 deadline) internal view {
         if (to == address(0) || to == address(this)) revert Router__InvalidTo();
         if (block.timestamp > deadline) revert Router__DeadlineExceeded();
-        if (tokenIn == tokenOut) revert Router__IdenticalTokens();
-        if (amount == 0) revert Router__ZeroAmount();
+        if (amountIn == 0 || amountOut == 0) revert Router__ZeroAmount();
     }
 
     /**
@@ -289,6 +284,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
             from = address(this);
             TokenLib.wrap(WNATIVE, amountIn);
         }
+
+        if (tokenIn == tokenOut) revert Router__IdenticalTokens();
 
         uint256 balance = TokenLib.universalBalanceOf(tokenOut, recipient);
 
