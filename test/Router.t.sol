@@ -30,7 +30,7 @@ contract RouterTest is Test {
         routerLogic = new MockRouterLogic();
         router = new Router(address(wnative), address(this));
 
-        router.updateRouterLogic(address(routerLogic));
+        router.updateRouterLogic(address(routerLogic), true);
 
         vm.label(address(router), "Router");
         vm.label(address(routerLogic), "RouterLogic");
@@ -49,15 +49,47 @@ contract RouterTest is Test {
     }
 
     function test_Fuzz_UpdateLogic(address logic) public {
-        assertEq(router.getLogic(), address(routerLogic), "test_Fuzz_UpdateLogic::1");
+        assertEq(router.getTrustedLogicLength(), 1, "test_Fuzz_UpdateLogic::1");
+        assertEq(router.getTrustedLogicAt(0), address(routerLogic), "test_Fuzz_UpdateLogic::2");
 
-        router.updateRouterLogic(address(logic));
+        router.updateRouterLogic(address(logic), true);
 
-        assertEq(router.getLogic(), address(logic), "test_Fuzz_UpdateLogic::2");
+        assertEq(router.getTrustedLogicLength(), 2, "test_Fuzz_UpdateLogic::3");
+        assertEq(router.getTrustedLogicAt(0), address(routerLogic), "test_Fuzz_UpdateLogic::4");
+        assertEq(router.getTrustedLogicAt(1), address(logic), "test_Fuzz_UpdateLogic::5");
 
-        router.updateRouterLogic(address(0));
+        router.updateRouterLogic(address(routerLogic), false);
 
-        assertEq(router.getLogic(), address(0), "test_Fuzz_UpdateLogic::3");
+        assertEq(router.getTrustedLogicLength(), 1, "test_Fuzz_UpdateLogic::6");
+        assertEq(router.getTrustedLogicAt(0), address(logic), "test_Fuzz_UpdateLogic::7");
+
+        router.updateRouterLogic(address(logic), false);
+
+        assertEq(router.getTrustedLogicLength(), 0, "test_Fuzz_UpdateLogic::8");
+    }
+
+    function test_Fuzz_Revert_UpdateLogic(address logic0, address logic1) public {
+        vm.assume(logic0 != address(routerLogic) && logic1 != address(routerLogic) && logic0 != logic1);
+
+        router.updateRouterLogic(address(logic0), true);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__LogicAlreadyAdded.selector, address(logic0)));
+        router.updateRouterLogic(address(logic0), true);
+
+        router.updateRouterLogic(address(logic1), true);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__LogicAlreadyAdded.selector, address(logic1)));
+        router.updateRouterLogic(address(logic1), true);
+
+        router.updateRouterLogic(address(logic0), false);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__LogicNotFound.selector, address(logic0)));
+        router.updateRouterLogic(address(logic0), false);
+
+        router.updateRouterLogic(address(logic1), false);
+
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__LogicNotFound.selector, address(logic1)));
+        router.updateRouterLogic(address(logic1), false);
     }
 
     function test_Fuzz_Revert_Transfer(address token, address from, address to, uint256 amount) public {
@@ -80,7 +112,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountIn, "test_Fuzz_SwapExactInTokenToToken::1");
@@ -98,7 +132,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         wnative.approve(address(router), amountIn);
-        router.swapExactIn(address(wnative), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(wnative), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(wnative.balanceOf(address(routerLogic)), amountIn, "test_Fuzz_SwapExactInWNativeToToken::1");
@@ -115,7 +151,7 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         router.swapExactIn{value: amountIn}(
-            address(0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+            address(routerLogic), address(0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
         );
         vm.stopPrank();
 
@@ -136,7 +172,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
-        router.swapExactIn(address(token0), address(wnative), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(wnative), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountIn, "test_Fuzz_SwapExactInTokenToWnative::1");
@@ -156,7 +194,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
-        router.swapExactIn(address(token0), address(0), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(0), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountIn, "test_Fuzz_SwapExactInTokenToNative::1");
@@ -173,7 +213,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountInMax, "test_Fuzz_SwapExactOutTokenToToken::1");
@@ -191,7 +233,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         wnative.approve(address(router), amountInMax);
-        router.swapExactOut(address(wnative), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(wnative), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(wnative.balanceOf(address(routerLogic)), amountInMax, "test_Fuzz_SwapExactOutWNativeToToken::1");
@@ -208,7 +252,7 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         router.swapExactOut{value: amountInMax}(
-            address(0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+            address(routerLogic), address(0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
         );
         vm.stopPrank();
 
@@ -229,7 +273,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
-        router.swapExactOut(address(token0), address(wnative), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(wnative), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountInMax, "test_Fuzz_SwapExactOutTokenToWnative::1");
@@ -249,7 +295,9 @@ contract RouterTest is Test {
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
-        router.swapExactOut(address(token0), address(0), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(0), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(token0.balanceOf(address(routerLogic)), amountInMax, "test_Fuzz_SwapExactOutTokenToNative::1");
@@ -258,22 +306,36 @@ contract RouterTest is Test {
 
     function test_Revert_SwapExactIn() public {
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0));
+        router.swapExactIn(
+            address(routerLogic), address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0));
+        router.swapExactIn(
+            address(routerLogic), address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__DeadlineExceeded.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
+        router.swapExactIn(address(routerLogic), address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
 
         vm.expectRevert(IRouter.Router__ZeroAmount.selector);
-        router.swapExactIn(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactIn(address(token0), address(token0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token0), 0, 0, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactIn(address(0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactIn(address(routerLogic), address(0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+
+        // vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
+        // router.swapExactIn(address(routerLogic), address(wnative), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+
+        // vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
+        // router.swapExactIn(address(routerLogic), address(0), address(wnative), 0, 0, alice, block.timestamp, new bytes(0));
 
         token0.mint(alice, 10e18);
 
@@ -285,28 +347,38 @@ contract RouterTest is Test {
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
         vm.expectRevert(TokenLib.TokenLib__NativeTransferFailed.selector);
-        router.swapExactIn(address(token0), address(0), 10e18, 1e18, address(this), block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(0), 10e18, 1e18, address(this), block.timestamp, route
+        );
         vm.stopPrank();
     }
 
     function test_Revert_SwapExactOut() public {
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0));
+        router.swapExactOut(
+            address(routerLogic), address(0), address(0), 0, 0, address(0), block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__InvalidTo.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0));
+        router.swapExactOut(
+            address(routerLogic), address(0), address(0), 0, 0, address(router), block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__DeadlineExceeded.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
+        router.swapExactOut(address(routerLogic), address(0), address(0), 0, 0, bob, block.timestamp - 1, new bytes(0));
 
         vm.expectRevert(IRouter.Router__ZeroAmount.selector);
-        router.swapExactOut(address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(0), 0, 0, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactOut(address(token0), address(token0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token0), 0, 0, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactOut(address(0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
+        router.swapExactOut(address(routerLogic), address(0), address(0), 0, 0, alice, block.timestamp, new bytes(0));
 
         token0.mint(alice, 10e18);
 
@@ -318,7 +390,9 @@ contract RouterTest is Test {
         vm.startPrank(alice);
         token0.approve(address(router), 10e18);
         vm.expectRevert(TokenLib.TokenLib__NativeTransferFailed.selector);
-        router.swapExactOut(address(token0), address(0), 1e18, 10e18, address(this), block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(0), 1e18, 10e18, address(this), block.timestamp, route
+        );
         vm.stopPrank();
     }
 
@@ -335,7 +409,9 @@ contract RouterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, amountIn, amountIn + 1)
         );
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         route = abi.encode(amountIn, amountOutMin - 1);
@@ -345,7 +421,9 @@ contract RouterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IRouter.Router__InsufficientOutputAmount.selector, amountOutMin - 1, amountOutMin)
         );
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         route = abi.encode(amountIn, amountOutMin - 1, amountIn, amountOutMin);
@@ -357,13 +435,17 @@ contract RouterTest is Test {
                 IRouter.Router__InsufficientAmountReceived.selector, 0, amountOutMin - 1, amountOutMin
             )
         );
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
-        router.updateRouterLogic(address(0));
+        router.updateRouterLogic(address(routerLogic), false);
 
-        vm.expectRevert(RouterLib.RouterLib__LogicNotSet.selector);
-        router.swapExactIn(address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__UntrustedLogic.selector, address(routerLogic)));
+        router.swapExactIn(
+            address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
     }
 
     function test_Fuzz_Revert_SwapExactOut(uint256 amountOut, uint256 amountInMax) public {
@@ -379,7 +461,9 @@ contract RouterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(RouterLib.RouterLib__InsufficientAllowance.selector, amountInMax, amountInMax + 1)
         );
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         route = abi.encode(amountInMax, amountOut, amountInMax + 1, amountOut);
@@ -391,7 +475,9 @@ contract RouterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IRouter.Router__InsufficientOutputAmount.selector, amountOut - 1, amountOut)
         );
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         route = abi.encode(amountInMax, amountOut - 1, amountInMax, amountOut);
@@ -401,13 +487,17 @@ contract RouterTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IRouter.Router__InsufficientAmountReceived.selector, 0, amountOut - 1, amountOut)
         );
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
-        router.updateRouterLogic(address(0));
+        router.updateRouterLogic(address(routerLogic), false);
 
-        vm.expectRevert(RouterLib.RouterLib__LogicNotSet.selector);
-        router.swapExactOut(address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        vm.expectRevert(abi.encodeWithSelector(IRouter.Router__UntrustedLogic.selector, address(routerLogic)));
+        router.swapExactOut(
+            address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
     }
 }
 
@@ -438,7 +528,7 @@ contract MockRouterLogic is IRouterLogic {
         address from,
         address to,
         bytes calldata route
-    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+    ) external returns (uint256 totalIn, uint256 totalOut) {
         (totalIn, totalOut) = abi.decode(route, (uint256, uint256));
 
         RouterLib.transfer(msg.sender, tokenIn, from, address(this), totalIn);

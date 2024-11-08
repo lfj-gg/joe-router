@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {TokenLib} from "./libraries/TokenLib.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
@@ -13,9 +14,11 @@ import {IRouter} from "./interfaces/IRouter.sol";
  * The route must follow the PackedRoute format.
  */
 contract Router is Ownable2Step, IRouter {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     address public immutable WNATIVE;
 
-    address private _logic;
+    EnumerableSet.AddressSet private _trustedLogics;
 
     /**
      * @dev The allowances represent the maximum amount of tokens that the logic contract can spend on behalf of the sender.
@@ -51,18 +54,26 @@ contract Router is Ownable2Step, IRouter {
     }
 
     /**
-     * @dev Returns the logic contract address.
+     * @dev Returns the logic contract address at the specified index.
      */
-    function getLogic() external view returns (address) {
-        return _logic;
+    function getTrustedLogicAt(uint256 index) external view override returns (address) {
+        return _trustedLogics.at(index);
     }
 
     /**
-     * @dev Swaps tokens from the sender to the recipient using the exact input amount.
+     * @dev Returns the number of trusted logic contracts.
+     */
+    function getTrustedLogicLength() external view override returns (uint256) {
+        return _trustedLogics.length();
+    }
+
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the exact input amount. It will use the specified logic contract.
      *
      * Emits a {SwapExactIn} event.
      *
      * Requirements:
+     * - The logic contract must be a trusted logic contract.
      * - The recipient address must not be zero or the router address.
      * - The deadline must not have passed.
      * - The input token and output token must not be the same.
@@ -71,6 +82,7 @@ contract Router is Ownable2Step, IRouter {
      * - The actual amount of tokenOut received must be greater than or equal to the amountOutMin.
      */
     function swapExactIn(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -78,22 +90,23 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata route
-    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
         if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
 
         _verifyParameters(tokenIn, tokenOut, amountIn, to, deadline);
 
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, route, true);
+        (totalIn, totalOut) = _swap(logic, tokenIn, tokenOut, amountIn, amountOutMin, msg.sender, to, route, true);
 
         emit SwapExactIn(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
 
     /**
-     * @dev Swaps tokens from the sender to the recipient using the exact output amount.
+     * @dev Swaps tokens from the sender to the recipient using the exact output amount. It will use the specified logic contract.
      *
      * Emits a {SwapExactOut} event.
      *
      * Requirements:
+     * - The logic contract must be a trusted logic contract.
      * - The recipient address must not be zero or the router address.
      * - The deadline must not have passed.
      * - The input token and output token must not be the same.
@@ -102,6 +115,7 @@ contract Router is Ownable2Step, IRouter {
      * - The actual amount of tokenOut received must be greater than or equal to the amountOut.
      */
     function swapExactOut(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountOut,
@@ -109,33 +123,41 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata route
-    ) external payable returns (uint256 totalIn, uint256 totalOut) {
+    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
         _verifyParameters(tokenIn, tokenOut, amountOut, to, deadline);
 
-        (totalIn, totalOut) = _swap(tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, route, false);
+        (totalIn, totalOut) = _swap(logic, tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, route, false);
 
         emit SwapExactOut(msg.sender, to, tokenIn, tokenOut, totalIn, totalOut);
     }
 
     /**
-     * @dev Simulates the swap of tokens using multiple routes.
+     * @dev Simulates the swap of tokens using multiple routes and the specified logic contract.
      * The simulation will revert with an array of amounts if the swap is valid.
      */
     function simulate(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
         bool exactIn,
         bytes[] calldata multiRoutes
-    ) external payable {
+    ) external payable override {
         uint256 length = multiRoutes.length;
 
         uint256[] memory amounts = new uint256[](length);
         for (uint256 i; i < length;) {
             (, bytes memory data) = address(this).delegatecall(
                 abi.encodeWithSelector(
-                    IRouter.simulateSingle.selector, tokenIn, tokenOut, amountIn, amountOut, exactIn, multiRoutes[i++]
+                    IRouter.simulateSingle.selector,
+                    logic,
+                    tokenIn,
+                    tokenOut,
+                    amountIn,
+                    amountOut,
+                    exactIn,
+                    multiRoutes[i++]
                 )
             );
 
@@ -152,19 +174,20 @@ contract Router is Ownable2Step, IRouter {
     }
 
     /**
-     * @dev Simulates the swap of tokens using a single route.
+     * @dev Simulates the swap of tokens using a single route and the specified logic contract.
      * The simulation will revert with the total amount of tokenIn or tokenOut if the swap is valid.
      */
     function simulateSingle(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
         bool exactIn,
         bytes calldata route
-    ) external payable {
+    ) external payable override {
         (uint256 totalIn, uint256 totalOut) =
-            _swap(tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, route, exactIn);
+            _swap(logic, tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, route, exactIn);
 
         revert Router__SimulateSingle(exactIn ? totalOut : totalIn);
     }
@@ -177,10 +200,14 @@ contract Router is Ownable2Step, IRouter {
      * Requirements:
      * - The caller must be the owner.
      */
-    function updateRouterLogic(address logic) external onlyOwner {
-        _logic = logic;
+    function updateRouterLogic(address logic, bool add) external override onlyOwner {
+        if (add) {
+            if (!_trustedLogics.add(logic)) revert Router__LogicAlreadyAdded(logic);
+        } else {
+            if (!_trustedLogics.remove(logic)) revert Router__LogicNotFound(logic);
+        }
 
-        emit RouterLogicUpdated(logic);
+        emit RouterLogicUpdated(logic, add);
     }
 
     /**
@@ -229,16 +256,19 @@ contract Router is Ownable2Step, IRouter {
 
     /**
      * @dev Helper function to call the logic contract to swap tokens.
+     * It will use the specified logic contract to swap the input token to the output token.
      * This function will wrap the input token if it is native and unwrap the output token if it is native.
      * It will also refund the sender if there is any excess amount of native token.
      * It will allow the logic contract to spend at most amountIn of the input token from the sender, and reset
      * the allowance after the swap, see {RouterLib.swap}.
      *
      * Requirements:
+     * - The logic contract must be a trusted logic contract.
      * - If the swap is exactIn, the totalIn must be equal to the amountIn.
      * - If the swap is exactOut, the totalIn must be less than or equal to the amountIn.
      */
     function _swap(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -248,6 +278,8 @@ contract Router is Ownable2Step, IRouter {
         bytes calldata route,
         bool exactIn
     ) internal returns (uint256 totalIn, uint256 totalOut) {
+        if (!_trustedLogics.contains(logic)) revert Router__UntrustedLogic(logic);
+
         uint256 balance = TokenLib.universalBalanceOf(tokenOut, to);
 
         address recipient;
@@ -259,8 +291,10 @@ contract Router is Ownable2Step, IRouter {
             TokenLib.wrap(WNATIVE, amountIn);
         }
 
+        address logic_ = logic; // avoid stack too deep error
+
         (totalIn, totalOut) =
-            RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, _logic);
+            RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic_);
 
         if (recipient == address(this)) {
             TokenLib.unwrap(WNATIVE, totalOut);

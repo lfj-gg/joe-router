@@ -48,7 +48,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         router = new Router(WAVAX, address(this));
         logic = new RouterLogic(address(router), LB0_ROUTER);
 
-        router.updateRouterLogic(address(logic));
+        router.updateRouterLogic(address(logic), true);
 
         vm.label(address(router), "Router");
         vm.label(address(logic), "RouterLogic");
@@ -109,17 +109,17 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.startPrank(alice);
         IERC20(WETH).approve(address(router), amountIn);
 
-        bytes[] memory multiRoutes = new bytes[](3);
-
-        multiRoutes[0] = route;
-        multiRoutes[1] = route;
-
-        (, bytes memory data) = address(router).call{value: 0.1e18}(
-            abi.encodeWithSelector(IRouter.simulate.selector, WETH, USDT, amountIn, 0, true, multiRoutes)
-        );
-
         uint256 expectedOut;
         {
+            bytes[] memory multiRoutes = new bytes[](3);
+
+            multiRoutes[0] = route;
+            multiRoutes[1] = route;
+
+            (, bytes memory data) = address(router).call{value: 0.1e18}(
+                abi.encodeWithSelector(IRouter.simulate.selector, logic, WETH, USDT, amountIn, 0, true, multiRoutes)
+            );
+
             uint256[] memory values;
 
             assembly ("memory-safe") {
@@ -134,7 +134,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         }
 
         (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: 0.1e18}(WETH, USDT, amountIn, 0, alice, block.timestamp, route);
+            router.swapExactIn{value: 0.1e18}(address(logic), WETH, USDT, amountIn, 0, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToToken::4");
@@ -178,19 +178,19 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.startPrank(alice);
         IERC20(WETH).approve(address(router), maxAmountIn);
 
-        bytes[] memory multiRoutes = new bytes[](3);
-
-        multiRoutes[0] = route;
-        multiRoutes[1] = route;
-
-        (, bytes memory data) = address(router).call{value: 0.1e18}(
-            abi.encodeWithSelector(
-                IRouter.simulate.selector, WETH, USDT, type(uint128).max, amountOut, false, multiRoutes
-            )
-        );
-
         uint256 expectedIn;
         {
+            bytes[] memory multiRoutes = new bytes[](3);
+
+            multiRoutes[0] = route;
+            multiRoutes[1] = route;
+
+            (, bytes memory data) = address(router).call{value: 0.1e18}(
+                abi.encodeWithSelector(
+                    IRouter.simulate.selector, logic, WETH, USDT, type(uint128).max, amountOut, false, multiRoutes
+                )
+            );
+
             uint256[] memory values;
 
             assembly ("memory-safe") {
@@ -204,8 +204,9 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             expectedIn = values[0];
         }
 
-        (uint256 totalIn, uint256 totalOut) =
-            router.swapExactOut{value: 0.1e18}(WETH, USDT, amountOut, maxAmountIn, alice, block.timestamp, route);
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
+            address(logic), WETH, USDT, amountOut, maxAmountIn, alice, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::4");
@@ -241,8 +242,9 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setRoute(route, ptr, USDC, USDT, LB2_USDT_USDC, 1.0e4, LB12_ID | ONE_FOR_ZERO);
 
         vm.prank(alice);
-        (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: amountIn + 0.1e18}(address(0), USDT, amountIn, 0, alice, block.timestamp, route);
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: amountIn + 0.1e18}(
+            address(logic), address(0), USDT, amountIn, 0, alice, block.timestamp, route
+        );
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToToken::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToToken::2");
@@ -277,7 +279,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
-            address(0), USDT, amountOut, maxAmountIn, alice, block.timestamp, route
+            address(logic), address(0), USDT, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::1");
@@ -313,8 +315,9 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.startPrank(alice);
         IERC20(USDT).approve(address(router), amountIn);
-        (uint256 totalIn, uint256 totalOut) =
-            router.swapExactIn{value: 0.1e18}(USDT, address(0), amountIn, 0, alice, block.timestamp, route);
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: 0.1e18}(
+            address(logic), USDT, address(0), amountIn, 0, alice, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNative::1");
@@ -351,8 +354,9 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
         vm.startPrank(alice);
         IERC20(USDT).approve(address(router), maxAmountIn);
-        (uint256 totalIn, uint256 totalOut) =
-            router.swapExactOut{value: 0.1e18}(USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, route);
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
+            address(logic), USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNative::1");
@@ -394,7 +398,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         IERC20(address(t0)).approve(address(router), amountIn);
 
         vm.expectRevert(RouterAdapter.RouterAdapter__UnexpectedAmountIn.selector);
-        router.swapExactIn(address(t0), address(t1), amountIn, 0, alice, block.timestamp, route);
+        router.swapExactIn(address(logic), address(t0), address(t1), amountIn, 0, alice, block.timestamp, route);
         vm.stopPrank();
     }
 

@@ -14,7 +14,6 @@ import "./TokenLib.sol";
 library RouterLib {
     error RouterLib__ZeroAmount();
     error RouterLib__InsufficientAllowance(uint256 allowance, uint256 amount);
-    error RouterLib__LogicNotSet();
 
     /**
      * @dev Returns the slot for the allowance of a token for a sender from an address.
@@ -131,8 +130,6 @@ library RouterLib {
         bool exactIn,
         address logic
     ) internal returns (uint256 totalIn, uint256 totalOut) {
-        if (logic == address(0)) revert RouterLib__LogicNotSet();
-
         bytes32 allowanceSlot = getAllowanceSlot(allowances, tokenIn, logic, from);
 
         uint256 length = 256 + route.length; // 32 * 6 + 32 + 32 + route.length

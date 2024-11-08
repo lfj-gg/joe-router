@@ -107,7 +107,7 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         address from,
         address to,
         bytes calldata route
-    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
+    ) external override returns (uint256 totalIn, uint256 totalOut) {
         (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
         if (PackedRoute.isTransferTax(route)) revert RouterLogic__TransferTaxNotSupported();

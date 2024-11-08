@@ -10,6 +10,9 @@ interface IRouter {
     error Router__OnlyWnative();
     error Router__InvalidWnative();
     error Router__IdenticalTokens();
+    error Router__LogicAlreadyAdded(address routerLogic);
+    error Router__LogicNotFound(address routerLogic);
+    error Router__UntrustedLogic(address routerLogic);
     error Router__Simulations(uint256[] amounts);
     error Router__SimulateSingle(uint256 amount);
 
@@ -19,10 +22,14 @@ interface IRouter {
     event SwapExactOut(
         address indexed sender, address to, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut
     );
-    event RouterLogicUpdated(address indexed routerLogic);
+    event RouterLogicUpdated(address indexed routerLogic, bool added);
 
     function WNATIVE() external view returns (address);
+    function getTrustedLogicAt(uint256 index) external view returns (address);
+    function getTrustedLogicLength() external view returns (uint256);
+    function updateRouterLogic(address routerLogic, bool added) external;
     function swapExactIn(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -32,6 +39,7 @@ interface IRouter {
         bytes memory route
     ) external payable returns (uint256, uint256);
     function swapExactOut(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountOut,
@@ -41,6 +49,7 @@ interface IRouter {
         bytes memory route
     ) external payable returns (uint256, uint256);
     function simulate(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -49,6 +58,7 @@ interface IRouter {
         bytes[] calldata route
     ) external payable;
     function simulateSingle(
+        address logic,
         address tokenIn,
         address tokenOut,
         uint256 amountIn,

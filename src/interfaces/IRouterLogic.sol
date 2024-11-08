@@ -33,7 +33,7 @@ interface IRouterLogic {
         address from,
         address to,
         bytes calldata route
-    ) external payable returns (uint256 totalIn, uint256 totalOut);
+    ) external returns (uint256 totalIn, uint256 totalOut);
 
     function sweep(address token, address to, uint256 amount) external;
 }

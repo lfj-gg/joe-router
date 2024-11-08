@@ -226,9 +226,6 @@ contract RouterLibTest is Test {
     }
 
     function test_Revert_Swap(bytes calldata route) public {
-        vm.expectRevert(RouterLib.RouterLib__LogicNotSet.selector);
-        RouterLib.swap(_allowances, address(0), address(0), 0, 0, address(0), address(0), route, true, address(0));
-
         _case = 2;
 
         vm.expectRevert(new bytes(0));
