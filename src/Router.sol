@@ -190,6 +190,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
         bool exactIn,
         bytes calldata route
     ) external payable override {
+        _verifyParameters(amountIn, amountOut, to, block.timestamp);
+
         (uint256 totalIn, uint256 totalOut) =
             _swap(logic, tokenIn, tokenOut, amountIn, amountOut, msg.sender, to, route, exactIn);
 
