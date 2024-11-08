@@ -280,8 +280,6 @@ contract Router is Ownable2Step, IRouter {
     ) internal returns (uint256 totalIn, uint256 totalOut) {
         if (!_trustedLogics.contains(logic)) revert Router__UntrustedLogic(logic);
 
-        uint256 balance = TokenLib.universalBalanceOf(tokenOut, to);
-
         address recipient;
         (recipient, tokenOut) = tokenOut == address(0) ? (address(this), WNATIVE) : (to, tokenOut);
 
@@ -291,16 +289,18 @@ contract Router is Ownable2Step, IRouter {
             TokenLib.wrap(WNATIVE, amountIn);
         }
 
+        uint256 balance = TokenLib.universalBalanceOf(tokenOut, recipient);
+
         address logic_ = logic; // avoid stack too deep error
 
         (totalIn, totalOut) =
             RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic_);
 
         if (recipient == address(this)) {
+            totalOut = _verifySwap(tokenOut, recipient, balance, amountOut, totalOut);
+
             TokenLib.unwrap(WNATIVE, totalOut);
             TokenLib.transferNative(to, totalOut);
-
-            totalOut = _verifySwap(address(0), to, balance, amountOut, totalOut);
         } else {
             totalOut = _verifySwap(tokenOut, to, balance, amountOut, totalOut);
         }
