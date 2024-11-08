@@ -54,6 +54,7 @@ interface IRouter {
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        address to,
         bool exactIn,
         bytes[] calldata route
     ) external payable;
@@ -63,6 +64,7 @@ interface IRouter {
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        address to,
         bool exactIn,
         bytes calldata route
     ) external payable;

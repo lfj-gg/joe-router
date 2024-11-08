@@ -117,7 +117,9 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             multiRoutes[1] = route;
 
             (, bytes memory data) = address(router).call{value: 0.1e18}(
-                abi.encodeWithSelector(IRouter.simulate.selector, logic, WETH, USDT, amountIn, 1, true, multiRoutes)
+                abi.encodeWithSelector(
+                    IRouter.simulate.selector, logic, WETH, USDT, amountIn, 1, alice, true, multiRoutes
+                )
             );
 
             uint256[] memory values;
@@ -187,7 +189,15 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
             (, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
-                    IRouter.simulate.selector, logic, WETH, USDT, type(uint128).max, amountOut, false, multiRoutes
+                    IRouter.simulate.selector,
+                    logic,
+                    WETH,
+                    USDT,
+                    type(uint128).max,
+                    amountOut,
+                    alice,
+                    false,
+                    multiRoutes
                 )
             );
 

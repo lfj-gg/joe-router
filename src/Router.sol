@@ -142,6 +142,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        address to,
         bool exactIn,
         bytes[] calldata multiRoutes
     ) external payable override {
@@ -157,6 +158,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
                     tokenOut,
                     amountIn,
                     amountOut,
+                    to,
                     exactIn,
                     multiRoutes[i++]
                 )
@@ -184,11 +186,12 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
         address tokenOut,
         uint256 amountIn,
         uint256 amountOut,
+        address to,
         bool exactIn,
         bytes calldata route
     ) external payable override {
         (uint256 totalIn, uint256 totalOut) =
-            _swap(logic, tokenIn, tokenOut, amountIn, amountOut, msg.sender, msg.sender, route, exactIn);
+            _swap(logic, tokenIn, tokenOut, amountIn, amountOut, msg.sender, to, route, exactIn);
 
         revert Router__SimulateSingle(exactIn ? totalOut : totalIn);
     }
