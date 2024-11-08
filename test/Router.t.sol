@@ -7,12 +7,14 @@ import "../src/Router.sol";
 import "../src/RouterLogic.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/WNative.sol";
+import "./mocks/MockTaxToken.sol";
 
 contract RouterTest is Test {
     MockERC20 public token0;
     MockERC20 public token1;
     MockERC20 public token2;
     WNative public wnative;
+    MockTaxToken public taxToken;
 
     Router public router;
     MockRouterLogic public routerLogic;
@@ -26,6 +28,9 @@ contract RouterTest is Test {
         token2 = new MockERC20("Token2", "T2", 6);
 
         wnative = new WNative();
+
+        taxToken = new MockTaxToken("TaxToken", "TT", 18);
+        taxToken.setTax(0.5e18); // 50%
 
         routerLogic = new MockRouterLogic();
         router = new Router(address(wnative), address(this));
@@ -476,6 +481,24 @@ contract RouterTest is Test {
         router.swapExactIn(
             address(routerLogic), address(token0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
         );
+
+        route = abi.encode(amountIn, amountOutMin);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRouter.Router__InsufficientAmountReceived.selector, 0, amountOutMin / 2, amountOutMin
+            )
+        );
+        router.swapExactIn(
+            address(routerLogic),
+            address(token0),
+            address(taxToken),
+            amountIn,
+            amountOutMin,
+            bob,
+            block.timestamp,
+            route
+        );
         vm.stopPrank();
 
         router.updateRouterLogic(address(routerLogic), false);
@@ -527,6 +550,22 @@ contract RouterTest is Test {
         );
         router.swapExactOut(
             address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
+
+        route = abi.encode(amountInMax, amountOut);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IRouter.Router__InsufficientAmountReceived.selector, 0, amountOut / 2, amountOut)
+        );
+        router.swapExactIn(
+            address(routerLogic),
+            address(token0),
+            address(taxToken),
+            amountInMax,
+            amountOut,
+            bob,
+            block.timestamp,
+            route
         );
         vm.stopPrank();
 

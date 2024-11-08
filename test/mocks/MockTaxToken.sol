@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockERC20} from "./MockERC20.sol";
 
 contract MockTaxToken is MockERC20 {
@@ -13,7 +14,7 @@ contract MockTaxToken is MockERC20 {
     }
 
     function _update(address from, address to, uint256 value) internal override {
-        uint256 taxAmount = (value * tax) / 1e18;
+        uint256 taxAmount = Math.mulDiv(value, tax, 1e18, Math.Rounding.Ceil);
 
         if (taxAmount > 0) {
             value -= taxAmount;
