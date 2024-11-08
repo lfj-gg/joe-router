@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {TokenLib} from "./libraries/TokenLib.sol";
@@ -13,7 +14,7 @@ import {IRouter} from "./interfaces/IRouter.sol";
  * @dev Router contract for swapping tokens using a predefined route.
  * The route must follow the PackedRoute format.
  */
-contract Router is Ownable2Step, IRouter {
+contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     address public immutable WNATIVE;
@@ -90,7 +91,7 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata route
-    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
+    ) external payable override nonReentrant returns (uint256 totalIn, uint256 totalOut) {
         if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
 
         _verifyParameters(tokenIn, tokenOut, amountIn, to, deadline);
@@ -123,7 +124,7 @@ contract Router is Ownable2Step, IRouter {
         address to,
         uint256 deadline,
         bytes calldata route
-    ) external payable override returns (uint256 totalIn, uint256 totalOut) {
+    ) external payable override nonReentrant returns (uint256 totalIn, uint256 totalOut) {
         _verifyParameters(tokenIn, tokenOut, amountOut, to, deadline);
 
         (totalIn, totalOut) = _swap(logic, tokenIn, tokenOut, amountInMax, amountOut, msg.sender, to, route, false);
