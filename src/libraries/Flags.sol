@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// flags = [zeroForOne? | callback? | id]
-// The zeroForOne flag is the first bit of the flags variable
-// The callback flag is the second bit of the flags variable
-// The id is the last 8 bits of the flags variable
-
 /**
  * @title Flags
  * @dev Helper library for parsing flags received from a packed route
