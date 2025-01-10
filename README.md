@@ -1,13 +1,46 @@
+# [Joe Router Contract](https://github.com/traderjoe-xyz/joe-router)
+
+This repository contains the implementation of a Router contract for swapping tokens using predefined routes. The routes must follow the PackedRoute format. The Router contract interacts with various decentralized exchanges (DEXs) such as Uniswap V2, Uniswap V3, and Trader Joe.
+
+## Contracts
+
+### Router.sol
+
+The main Router contract for swapping tokens using predefined routes. It supports both exact input and exact output swaps. The router contract will validate the route and perform the swaps using the `RouterLogic` contract.
+
+### RouterLogic.sol
+
+The RouterLogic contract implements the logic for swapping tokens using a route. It interacts with different DEXs to perform the swaps. The route must be in the PackedRoute format.
+
+### RouterAdapter.sol
+
+The RouterAdapter contract provides helper functions for interacting with different types of pairs, including Uniswap V2, Trader Joe Legacy LB, Trader Joe LB, and Uniswap V3 pairs.
+
+## Libraries
+
+### TokenLib.sol
+
+Helper library for token operations, such as balanceOf, transfer, transferFrom, wrap, and unwrap.
+
+### RouterLib.sol
+
+Helper library for router operations, such as validateAndTransfer, transfer, and swap.
+
+### PairInteraction.sol
+
+Helper library for interacting with Uniswap V2, Trader Joe, and Uniswap V3 pairs.
+
+### PackedRoute.sol
+
+Helper library to decode packed route data. For more information on the PackedRoute format, see the PackedRoute documentation.
+
+### Flags.sol
+
+Helper library for parsing flags received from a packed route.
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
 ## Documentation
 
@@ -27,40 +60,14 @@ $ forge build
 $ forge test
 ```
 
-### Format
+## License
 
-```shell
-$ forge fmt
-```
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-### Gas Snapshots
+## Contributing
 
-```shell
-$ forge snapshot
-```
+Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
 
-### Anvil
+## Contact
 
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+For any questions or inquiries, please contact the repository owner.
