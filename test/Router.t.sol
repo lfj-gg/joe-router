@@ -54,6 +54,8 @@ contract RouterTest is Test {
     }
 
     function test_Fuzz_UpdateLogic(address logic) public {
+        vm.assume(logic != address(routerLogic));
+
         assertEq(router.getTrustedLogicLength(), 1, "test_Fuzz_UpdateLogic::1");
         assertEq(router.getTrustedLogicAt(0), address(routerLogic), "test_Fuzz_UpdateLogic::2");
 
