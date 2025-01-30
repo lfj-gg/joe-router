@@ -13,6 +13,7 @@ import {TokenLib} from "./libraries/TokenLib.sol";
 abstract contract RouterAdapter {
     error RouterAdapter__InvalidId();
     error RouterAdapter__InsufficientLBLiquidity();
+    error RouterAdapter__InsufficientTMLiquidity();
     error RouterAdapter__UniswapV3SwapCallbackOnly(int256 amount0Delta, int256 amount1Delta);
     error RouterAdapter__UnexpectedCallback();
     error RouterAdapter__UnexpectedAmountIn();
@@ -45,6 +46,8 @@ abstract contract RouterAdapter {
             return _getAmountInLB(pair, flags, amountOut);
         } else if (id == Flags.UNISWAP_V3_ID) {
             return _getAmountInUV3(pair, flags, amountOut);
+        } else if (id == Flags.TRADERJOE_TOKEN_MILL_ID) {
+            return _getAmountInTM(pair, flags, amountOut);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -70,6 +73,8 @@ abstract contract RouterAdapter {
             amountOut = _swapLB(pair, flags, recipient);
         } else if (id == Flags.UNISWAP_V3_ID) {
             amountOut = _swapUV3(pair, flags, recipient, amountIn, tokenIn);
+        } else if (id == Flags.TRADERJOE_TOKEN_MILL_ID) {
+            amountOut = _swapTM(pair, flags, recipient, amountIn);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -185,5 +190,28 @@ abstract contract RouterAdapter {
         _callbackData = PairInteraction.hashUV3(amount0Delta, amount1Delta, token);
 
         TokenLib.transfer(token, msg.sender, uint256(amount0Delta > 0 ? amount0Delta : amount1Delta));
+    }
+
+    /* Token Mill */
+
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Trader Joe Token Mill pair.
+     */
+    function _getAmountInTM(address pair, uint256 flags, uint256 amountOut) internal view returns (uint256) {
+        (uint256 amountIn, uint256 actualAmountOut) =
+            PairInteraction.getSwapInTM(pair, amountOut, Flags.zeroForOne(flags));
+        if (actualAmountOut != amountOut) revert RouterAdapter__InsufficientTMLiquidity();
+        return amountIn;
+    }
+
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Trader Joe Token Mill pair.
+     */
+    function _swapTM(address pair, uint256 flags, address recipient, uint256 amountIn) internal returns (uint256) {
+        (uint256 amountOut, uint256 actualAmountIn) =
+            PairInteraction.swapTM(pair, recipient, amountIn, Flags.zeroForOne(flags));
+
+        if (actualAmountIn != amountIn) revert RouterAdapter__InsufficientTMLiquidity();
+        return amountOut;
     }
 }

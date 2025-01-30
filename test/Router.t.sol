@@ -576,6 +576,11 @@ contract RouterTest is Test {
             address(routerLogic), address(token0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
         );
     }
+
+    function test_Revert_Router() public {
+        vm.expectRevert(IRouter.Router__OnlyWnative.selector);
+        payable(address(router)).transfer(1);
+    }
 }
 
 contract MockRouterLogic is IRouterLogic {

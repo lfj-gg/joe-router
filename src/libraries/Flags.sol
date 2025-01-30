@@ -21,6 +21,7 @@ library Flags {
     uint256 internal constant TRADERJOE_LEGACY_LB_ID = 2 << ID_OFFSET;
     uint256 internal constant TRADERJOE_LB_ID = 3 << ID_OFFSET; // v2.1 and v2.2 have the same ABI for swaps
     uint256 internal constant UNISWAP_V3_ID = 4 << ID_OFFSET;
+    uint256 internal constant TRADERJOE_TOKEN_MILL_ID = 5 << ID_OFFSET;
 
     /**
      * @dev Returns the id of the flags variable

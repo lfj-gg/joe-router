@@ -334,4 +334,91 @@ library PairInteraction {
             success := call(gas(), pair, 0, add(ptr, 28), 228, ptr, 68)
         }
     }
+
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe Token Mill pair.
+     * The function actually tries to swap token but revert before having to send any token.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 32 bytes.
+     */
+    function getSwapInTM(address pair, uint256 amountOut, bool swapForY)
+        internal
+        view
+        returns (uint256 amountIn, uint256 actualAmountOut)
+    {
+        uint256 returnDataSize;
+        assembly ("memory-safe") {
+            let m0x40 := mload(0x40)
+
+            mstore(0, 0xcd56aadc) // getDeltaAmounts(address,int256,bool)
+            mstore(32, sub(0, amountOut))
+            mstore(64, swapForY)
+
+            if iszero(staticcall(gas(), pair, 28, 68, 0, 64)) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            returnDataSize := returndatasize()
+
+            switch swapForY
+            case 0 {
+                amountIn := mload(32)
+                actualAmountOut := mload(0)
+            }
+            default {
+                amountIn := mload(0)
+                actualAmountOut := mload(32)
+            }
+
+            actualAmountOut := sub(0, actualAmountOut) // Invert the sign
+
+            mstore(0x40, m0x40)
+        }
+
+        if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
+    }
+
+    function swapTM(address pair, address recipient, uint256 amountIn, bool swapForY)
+        internal
+        returns (uint256 amountOut, uint256 actualAmountIn)
+    {
+        uint256 returnDataSize;
+
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+
+            mstore(ptr, 0xdc35ff77) // swap(address,int256,bool,bytes,address)
+            mstore(add(ptr, 32), recipient)
+            mstore(add(ptr, 64), amountIn)
+            mstore(add(ptr, 96), swapForY)
+            mstore(add(ptr, 128), 160)
+            mstore(add(ptr, 160), 0)
+            mstore(add(ptr, 192), 0)
+
+            if iszero(call(gas(), pair, 0, add(ptr, 28), 196, 0, 64)) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            returnDataSize := returndatasize()
+
+            switch swapForY
+            case 0 {
+                actualAmountIn := mload(32)
+                amountOut := mload(0)
+            }
+            default {
+                actualAmountIn := mload(0)
+                amountOut := mload(32)
+            }
+
+            amountOut := sub(0, amountOut) // Invert the sign
+        }
+
+        if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
+    }
 }
