@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title PairInteraction
- * @dev Library for interacting with Uniswap V2, Trader Joe, and Uniswap V3 pairs.
+ * @dev Library for interacting with Uniswap V2, LFJ, and Uniswap V3 pairs.
  */
 library PairInteraction {
     error PairInteraction__InvalidReturnData();
@@ -70,7 +70,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe Legacy LB pair.
+     * @dev Returns the amount of tokenIn required to get amountOut from a LFJ Legacy LB pair.
      * It uses the router v2.0 helper function `getSwapIn` to get the amount required.
      *
      * Requirements:
@@ -108,7 +108,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Swaps tokenIn for tokenOut in a Trader Joe Legacy LB pair.
+     * @dev Swaps tokenIn for tokenOut in a LFJ Legacy LB pair.
      *
      * Requirements:
      * - The call must succeed.
@@ -143,7 +143,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe LB pair (v2.0 and v2.1).
+     * @dev Returns the amount of tokenIn required to get amountOut from a LFJ LB pair (v2.0 and v2.1).
      *
      * Requirements:
      * - The call must succeed.
@@ -180,7 +180,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Swaps tokenIn for tokenOut in a Trader Joe LB pair (v2.0 and v2.1).
+     * @dev Swaps tokenIn for tokenOut in a LFJ LB pair (v2.0 and v2.1).
      *
      * Requirements:
      * - The call must succeed.
@@ -336,7 +336,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe Token Mill pair.
+     * @dev Returns the amount of tokenIn required to get amountOut from a LFJ Token Mill pair.
      *
      * Requirements:
      * - The call must succeed.
@@ -382,7 +382,7 @@ library PairInteraction {
     }
 
     /**
-     * @dev Swaps tokenIn for tokenOut in a Trader Joe Token Mill pair.
+     * @dev Swaps tokenIn for tokenOut in a LFJ Token Mill pair.
      *
      * Requirements:
      * - The call must succeed.
