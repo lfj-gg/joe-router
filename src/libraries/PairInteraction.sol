@@ -337,7 +337,6 @@ library PairInteraction {
 
     /**
      * @dev Returns the amount of tokenIn required to get amountOut from a Trader Joe Token Mill pair.
-     * The function actually tries to swap token but revert before having to send any token.
      *
      * Requirements:
      * - The call must succeed.
@@ -353,7 +352,7 @@ library PairInteraction {
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
-            mstore(0, 0xcd56aadc) // getDeltaAmounts(address,int256,bool)
+            mstore(0, 0xcd56aadc) // getDeltaAmounts(int256,bool)
             mstore(32, sub(0, amountOut))
             mstore(64, swapForY)
 
@@ -382,6 +381,14 @@ library PairInteraction {
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
+    /**
+     * @dev Swaps tokenIn for tokenOut in a Trader Joe Token Mill pair.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
     function swapTM(address pair, address recipient, uint256 amountIn, bool swapForY)
         internal
         returns (uint256 amountOut, uint256 actualAmountIn)
