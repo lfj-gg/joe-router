@@ -334,7 +334,7 @@ contract PairInteractionTest is Test {
 
         (uint256 amountIn_, uint256 actualAmountOut_) = this.getSwapInTM(address(this), amountOut, swapForY);
 
-        assertEq(amountIn_, amountIn, "test_Fuzz_GetSwapInTM::1");
+        assertEq(amountIn_, amountIn + 1, "test_Fuzz_GetSwapInTM::1");
         assertEq(actualAmountOut_, actualAmountOut, "test_Fuzz_GetSwapInTM::2");
     }
 

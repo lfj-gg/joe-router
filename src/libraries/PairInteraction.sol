@@ -373,6 +373,7 @@ library PairInteraction {
                 actualAmountOut := mload(32)
             }
 
+            amountIn := add(amountIn, 1) // Add 1 wei to account for rounding errors
             actualAmountOut := sub(0, actualAmountOut) // Invert the sign
 
             mstore(0x40, m0x40)

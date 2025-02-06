@@ -7,6 +7,7 @@ import "../src/Router.sol";
 import "../src/RouterLogic.sol";
 import "./PackedRouteHelper.sol";
 import "./mocks/MockERC20.sol";
+import "./interfaces/ITMPair.sol";
 
 contract RouterIntegrationTMTest is Test, PackedRouteHelper {
     Router public router;
@@ -27,7 +28,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
     address alice = makeAddr("Alice");
 
     function setUp() public {
-        vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 56576832);
+        vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 56845529);
 
         router = new Router(WAVAX, address(this));
         logic = new RouterLogic(address(router), address(0));
@@ -209,15 +210,25 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
 
         ptr = _setRoute(route, ptr, WAVAX, CHAMP, TM_CHAMP_AVAX, 1.0e4, TM_ID | ONE_FOR_ZERO);
 
+        (, int256 deltaQuote,) = ITMPair(TM_CHAMP_AVAX).getDeltaAmounts(-int128(amountOut), false);
+        (int256 deltaBase,,) = ITMPair(TM_CHAMP_AVAX).getDeltaAmounts(deltaQuote, false);
+
+        assertLt(uint256(-deltaBase), amountOut, "test_SwapExactOutNativeToToken::1");
+
+        (, deltaQuote,) = ITMPair(TM_CHAMP_AVAX).getDeltaAmounts(-int128(amountOut), false);
+        (deltaBase,,) = ITMPair(TM_CHAMP_AVAX).getDeltaAmounts(deltaQuote + 1, false);
+
+        assertGe(uint256(-deltaBase), amountOut, "test_SwapExactOutNativeToToken::2");
+
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
             address(logic), address(0), CHAMP, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
-        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::1");
-        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::2");
-        assertEq(alice.balance, maxAmountIn + 0.1e18 - totalIn, "test_SwapExactOutNativeToToken::3");
-        assertGe(IERC20(CHAMP).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::4");
+        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::3");
+        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::4");
+        assertEq(alice.balance, maxAmountIn + 0.1e18 - totalIn, "test_SwapExactOutNativeToToken::5");
+        assertGe(IERC20(CHAMP).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::6");
     }
 
     function test_SwapExactInTokenToNative() public {
