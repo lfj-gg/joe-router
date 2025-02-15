@@ -438,9 +438,6 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         (bool s,) = address(router).call{value: amountIn}(data);
         require(s, "failed");
         vm.stopPrank();
-        console.log("Bob's eth balance after swap: ", address(bob).balance);
-        console.log("Bob's token1 balance after swap: ", IERC20(token1).balanceOf(address(bob)));
-        console.log("Bob's wnative balance after swap: ", IERC20(wnative).balanceOf(address(bob)));
     }
 
     function test_Swap_Edge2() public {
