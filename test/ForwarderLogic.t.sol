@@ -60,6 +60,8 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
     function setUp() public {
         forwarderLogic = new ForwarderLogic(address(this));
 
+        forwarderLogic.updateTrustedRouter(address(this), true);
+
         token0 = address(new MockERC20("Token0", "T0", 18));
         token1 = address(new MockERC20("Token1", "T1", 6));
 
@@ -114,6 +116,13 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.expectRevert();
         forwarderLogic.swapExactIn(token0, address(0), 0, 0, address(0), address(0), new bytes(39));
 
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__UntrustedRouter.selector);
+        forwarderLogic.swapExactIn(
+            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(1), address(1), "")
+        );
+
+        forwarderLogic.updateTrustedRouter(address(0), true);
+
         vm.expectRevert(IForwarderLogic.ForwarderLogic__NoCode.selector);
         forwarderLogic.swapExactIn(
             token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(this), address(0), "")
@@ -144,6 +153,37 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         forwarderLogic.sweep(token0, alice, 1e18);
 
         assertEq(IERC20(token0).balanceOf(alice), 1e18, "test_Sweep::2");
+    }
+
+    function test_Fuzz_UpdateTrustedRouter(address router) public {
+        vm.assume(router != address(this));
+
+        forwarderLogic.updateTrustedRouter(router, true);
+
+        assertEq(forwarderLogic.getTrustedRouterLength(), 2, "test_Fuzz_UpdateTrustedRouter::1");
+        assertEq(forwarderLogic.getTrustedRouterAt(0), address(this), "test_Fuzz_UpdateTrustedRouter::2");
+        assertEq(forwarderLogic.getTrustedRouterAt(1), router, "test_Fuzz_UpdateTrustedRouter::3");
+
+        forwarderLogic.updateTrustedRouter(router, false);
+
+        assertEq(forwarderLogic.getTrustedRouterLength(), 1, "test_Fuzz_UpdateTrustedRouter::4");
+        assertEq(forwarderLogic.getTrustedRouterAt(0), address(this), "test_Fuzz_UpdateTrustedRouter::5");
+    }
+
+    function test_Revert_Fuzz_UpdateTrustedRouter(address router) public {
+        vm.assume(router != address(this));
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__RouterUpdateFailed.selector);
+        forwarderLogic.updateTrustedRouter(router, false);
+
+        forwarderLogic.updateTrustedRouter(router, true);
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__RouterUpdateFailed.selector);
+        forwarderLogic.updateTrustedRouter(router, true);
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__OnlyRouterOwner.selector);
+        vm.prank(alice);
+        forwarderLogic.updateTrustedRouter(router, false);
     }
 
     function test_Revert_Sweep() public {
