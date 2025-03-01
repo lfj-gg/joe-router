@@ -78,7 +78,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         public
     {
         if (from == address(0) || from == address(this) || from == address(forwarderLogic)) from = address(1);
-        if (to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(1);
+        if (to == from || to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(2);
 
         (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
 
