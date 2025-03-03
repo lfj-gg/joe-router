@@ -438,9 +438,6 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         (bool s,) = address(router).call{value: amountIn}(data);
         require(s, "failed");
         vm.stopPrank();
-        console.log("Bob's eth balance after swap: ", address(bob).balance);
-        console.log("Bob's token1 balance after swap: ", IERC20(token1).balanceOf(address(bob)));
-        console.log("Bob's wnative balance after swap: ", IERC20(wnative).balanceOf(address(bob)));
     }
 
     function test_Swap_Edge2() public {
@@ -484,6 +481,37 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         (address token0, address token1) = abi.decode(data, (address, address));
         MockERC20(token0).mint(msg.sender, uint256(amount0Owed));
         MockERC20(token1).mint(msg.sender, uint256(amount1Owed));
+    }
+
+    function test_Swap_InvalidCallback() public {
+        uint128 amountIn = 100e6;
+
+        deal(USDC, alice, amountIn);
+        deal(USDT, address(logic), 1e18); // Mint some USDT to logic contract to try to transfer USDT instead of USDC
+
+        (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
+
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, USDC);
+        ptr = _setToken(route, ptr, WETH);
+        ptr = _setRoute(route, ptr, USDC, WETH, address(this), 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+
+        vm.startPrank(alice);
+        IERC20(USDC).approve(address(router), amountIn);
+
+        _data = abi.encode(1e18, 1e18, address(USDT));
+
+        vm.expectRevert(RouterAdapter.RouterAdapter__UnexpectedCallback.selector);
+        router.swapExactIn(address(logic), USDC, WETH, 100e6, 1e18, alice, 1e18, route);
+        vm.stopPrank();
+    }
+
+    bytes private _data;
+
+    function swap(address, bool, int256, uint160, bytes calldata) external returns (int256, int256) {
+        (int256 amount0Delta, int256 amount1Delta, address token) = abi.decode(_data, (int256, int256, address));
+        RouterLogic(logic).uniswapV3SwapCallback(amount0Delta, amount1Delta, abi.encode(token));
+        return (amount0Delta, amount1Delta);
     }
 }
 

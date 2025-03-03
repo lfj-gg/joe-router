@@ -623,4 +623,6 @@ contract MockRouterLogic is IRouterLogic {
     }
 
     function sweep(address, address, uint256) external {}
+
+    function test() public pure {}
 }

@@ -1,0 +1,1 @@
+[{"type": "error", "name": "RouterLib__InsufficientAllowance", "inputs": [{"name": "allowance", "type": "uint256", "internalType": "uint256"}, {"name": "amount", "type": "uint256", "internalType": "uint256"}]}, {"type": "error", "name": "RouterLib__ZeroAmount", "inputs": []}]
