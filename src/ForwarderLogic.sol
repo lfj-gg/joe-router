@@ -67,7 +67,7 @@ contract ForwarderLogic is IForwarderLogic {
         bytes calldata data
     ) external override returns (uint256, uint256) {
         if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
-        if (_blacklist[from]) revert ForwarderLogic__Blacklisted();
+        if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
         address approval = address(uint160(bytes20(data[0:20])));
         address router = address(uint160(bytes20(data[20:40])));

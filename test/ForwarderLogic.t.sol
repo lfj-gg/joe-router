@@ -202,6 +202,12 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
         forwarderLogic.swapExactIn(address(0), address(0), 0, 0, user, address(0), "");
 
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
+        forwarderLogic.swapExactIn(address(0), address(0), 0, 0, address(0), user, "");
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
+        forwarderLogic.swapExactIn(address(0), address(0), 0, 0, user, user, "");
+
         forwarderLogic.updateBlacklist(user, false);
 
         assertFalse(forwarderLogic.isBlacklisted(user), "test_Fuzz_Blacklist::3");
