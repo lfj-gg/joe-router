@@ -191,4 +191,25 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.prank(alice);
         forwarderLogic.sweep(address(0), address(0), 0);
     }
+
+    function test_Fuzz_Blacklist(address user) public {
+        assertFalse(forwarderLogic.isBlacklisted(user), "test_Fuzz_Blacklist::1");
+
+        forwarderLogic.updateBlacklist(user, true);
+
+        assertTrue(forwarderLogic.isBlacklisted(user), "test_Fuzz_Blacklist::2");
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
+        forwarderLogic.swapExactIn(address(0), address(0), 0, 0, user, address(0), "");
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
+        forwarderLogic.swapExactIn(address(0), address(0), 0, 0, address(0), user, "");
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__Blacklisted.selector);
+        forwarderLogic.swapExactIn(address(0), address(0), 0, 0, user, user, "");
+
+        forwarderLogic.updateBlacklist(user, false);
+
+        assertFalse(forwarderLogic.isBlacklisted(user), "test_Fuzz_Blacklist::3");
+    }
 }
