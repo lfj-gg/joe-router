@@ -510,13 +510,17 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
     function swap(address, bool, int256, uint160, bytes calldata) external returns (int256, int256) {
         (int256 amount0Delta, int256 amount1Delta, address token) = abi.decode(_data, (int256, int256, address));
-        RouterLogic(logic).uniswapV3SwapCallback(amount0Delta, amount1Delta, abi.encode(token));
+        IV3Callback(address(logic)).uniswapV3SwapCallback(amount0Delta, amount1Delta, abi.encode(token));
         return (amount0Delta, amount1Delta);
     }
 }
 
 interface IV3Factory {
     function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool);
+}
+
+interface IV3Callback {
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external;
 }
 
 interface IV3Pool {
