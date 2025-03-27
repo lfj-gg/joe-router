@@ -445,13 +445,15 @@ library PairInteraction {
         assembly ("memory-safe") {
             let ptr := mload(0x40)
 
-            mstore(ptr, 0xa0b6ea01) // getSqrtRatiosBounds()
+            mstore(0, 0xa0b6ea01) // getSqrtRatiosBounds()
 
-            if staticcall(gas(), pair, add(ptr, 28), 4, ptr, 96) { returnDataSize := returndatasize() }
+            if staticcall(gas(), pair, 28, 4, 0, 96) { returnDataSize := returndatasize() }
 
             switch swapForY
-            case 0 { sqrtLimitPriceX96 := mload(add(ptr, 64)) }
-            default { sqrtLimitPriceX96 := mload(ptr) }
+            case 0 { sqrtLimitPriceX96 := mload(64) }
+            default { sqrtLimitPriceX96 := mload(0) }
+
+            mstore(0x40, ptr)
         }
 
         if (returnDataSize < 96) revert PairInteraction__InvalidReturnData();
