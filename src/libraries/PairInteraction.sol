@@ -228,8 +228,8 @@ library PairInteraction {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
 
         assembly ("memory-safe") {
-            // RouterAdapter__UniswapV3SwapCallbackOnly(int256,int256)
-            switch and(eq(shr(224, mload(ptr)), 0xcbdb9bb5), iszero(success))
+            // data = [selector: 4][amount0: 32][amount1: 32][data_ptr: 32][data_length: 32][data_value: 32]
+            switch and(iszero(success), eq(returndatasize(), 164))
             case 0 {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())
@@ -300,6 +300,27 @@ library PairInteraction {
             hash := keccak256(0, 96)
 
             mstore(0x40, ptr)
+        }
+    }
+
+    /**
+     * @dev Decodes the amount deltas and token address from the callback data of a Uniswap V3 pair.
+     *
+     * Requirements:
+     * - The data must be exactly 164 bytes.
+     */
+    function decodeUV3CallbackData(bytes calldata data)
+        internal
+        pure
+        returns (int256 amount0Delta, int256 amount1Delta, address token)
+    {
+        // data = [selector: 4][amount0: 32][amount1: 32][data_ptr: 32][data_length: 32][data_value: 32]
+        if (data.length != 164) revert PairInteraction__InvalidReturnData();
+
+        assembly {
+            amount0Delta := calldataload(4)
+            amount1Delta := calldataload(36)
+            token := calldataload(132)
         }
     }
 

@@ -247,34 +247,31 @@ contract PairInteractionTest is Test {
 
     function test_Fuzz_GetSwapInUV3(bool zeroForOne, uint256 amountOut, int256 amount0, int256 amount1) public {
         _case = 2;
-        _data =
-            abi.encodeWithSelector(RouterAdapter.RouterAdapter__UniswapV3SwapCallbackOnly.selector, amount0, amount1);
+        _data = abi.encodeWithSelector(bytes4(0xaabbccdd), amount0, amount1, abi.encode(address(this)));
 
         uint256 amount = this.getSwapInUV3(address(this), zeroForOne, amountOut);
 
         assertEq(amount, zeroForOne ? uint256(amount0) : uint256(amount1), "test_Fuzz_GetSwapInUV3::1");
     }
 
-    function test_Fuzz_Revert_GetSwapInUV3(
-        bytes4 selector,
-        bool zeroForOne,
-        uint256 amountOut,
-        int256 amount0,
-        int256 amount1
-    ) public {
+    function test_Fuzz_Revert_GetSwapInUV3(bool zeroForOne, uint256 amountOut, int256 amount0, int256 amount1) public {
         _case = 1;
-        _data =
-            abi.encodeWithSelector(RouterAdapter.RouterAdapter__UniswapV3SwapCallbackOnly.selector, amount0, amount1);
+        _data = abi.encodeWithSelector(bytes4(0xaabbccdd), amount0, amount1, abi.encode(address(this)));
 
         vm.expectRevert(_data);
         this.getSwapInUV3(address(this), zeroForOne, amountOut);
 
-        if (selector == RouterAdapter.RouterAdapter__UniswapV3SwapCallbackOnly.selector) {
-            selector = CustomError.selector;
-        }
+        _case = 2;
+        _data = abi.encodePacked(bytes4(0xaabbccdd), new bytes(159));
+
+        vm.expectRevert(_data);
+        this.getSwapInUV3(address(this), zeroForOne, amountOut);
 
         _case = 2;
-        _data = abi.encodeWithSelector(selector, amount0, amount1);
+        _data = abi.encodePacked(bytes4(0xaabbccdd), new bytes(161));
+
+        vm.expectRevert(_data);
+        this.getSwapInUV3(address(this), zeroForOne, amountOut);
 
         vm.expectRevert(_data);
         this.getSwapInUV3(address(this), zeroForOne, amountOut);
