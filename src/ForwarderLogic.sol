@@ -21,6 +21,7 @@ contract ForwarderLogic is IForwarderLogic {
     address private immutable _router;
 
     EnumerableSet.AddressSet private _trustedRouter;
+    mapping(address => bool) private _blacklist;
 
     constructor(address router) {
         if (router == address(0)) revert ForwarderLogic__InvalidRouter();
@@ -42,6 +43,13 @@ contract ForwarderLogic is IForwarderLogic {
     }
 
     /**
+     * @dev Returns the blacklist status of the account.
+     */
+    function isBlacklisted(address account) external view override returns (bool) {
+        return _blacklist[account];
+    }
+
+    /**
      * @dev Swaps an exact amount of tokenIn for as much tokenOut as possible using an external router.
      * The function will simply forward the call to the router and return the amount of tokenIn and tokenOut swapped.
      *
@@ -59,6 +67,7 @@ contract ForwarderLogic is IForwarderLogic {
         bytes calldata data
     ) external override returns (uint256, uint256) {
         if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
+        if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
         address approval = address(uint160(bytes20(data[0:20])));
         address router = address(uint160(bytes20(data[20:40])));
@@ -115,6 +124,20 @@ contract ForwarderLogic is IForwarderLogic {
         }
 
         emit TrustedRouterUpdated(router, add);
+    }
+
+    /**
+     * @dev Updates the blacklist.
+     *
+     * Requirements:
+     * - The caller must be the router owner.
+     */
+    function updateBlacklist(address account, bool blacklisted) external override {
+        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+
+        _blacklist[account] = blacklisted;
+
+        emit BlacklistUpdated(account, blacklisted);
     }
 
     /**

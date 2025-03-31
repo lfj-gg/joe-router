@@ -9,12 +9,16 @@ interface IForwarderLogic {
     error ForwarderLogic__OnlyRouter();
     error ForwarderLogic__RouterUpdateFailed();
     error ForwarderLogic__UntrustedRouter();
+    error ForwarderLogic__Blacklisted();
 
     event TrustedRouterUpdated(address indexed router, bool trusted);
+    event BlacklistUpdated(address indexed account, bool blacklisted);
 
     function getTrustedRouterLength() external view returns (uint256);
 
     function getTrustedRouterAt(uint256 index) external view returns (address);
+
+    function isBlacklisted(address account) external view returns (bool);
 
     function swapExactIn(
         address tokenIn,
@@ -29,4 +33,6 @@ interface IForwarderLogic {
     function sweep(address token, address to, uint256 amount) external;
 
     function updateTrustedRouter(address router, bool add) external;
+
+    function updateBlacklist(address account, bool blacklisted) external;
 }
