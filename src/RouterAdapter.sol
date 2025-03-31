@@ -34,7 +34,7 @@ abstract contract RouterAdapter {
      *
      * Requirements:
      * - The callback data must have been set to `pair << 96 | PAIR_ID` before the callback, otherwise revert with
-     * `RouterAdapter__UnexpectedCallback(data)`.
+     * `RouterAdapter__UnexpectedCallback()`.
      */
     fallback() external {
         uint256 callbackData = _callbackData;
