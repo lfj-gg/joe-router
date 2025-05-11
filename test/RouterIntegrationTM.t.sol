@@ -26,12 +26,13 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
     address public TM_CHAMP_AVAX = 0xE8e45d1866efe193268Ba3820a52717A2645d78C;
 
     address alice = makeAddr("Alice");
+    address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 56845529);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), address(0));
+        logic = new RouterLogic(address(router), address(0), feeReceiver);
 
         router.updateRouterLogic(address(logic), true);
 

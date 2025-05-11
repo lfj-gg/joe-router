@@ -72,6 +72,22 @@ abstract contract PackedRouteHelper {
         uint256 tokenInId = _tokenToId[tokenIn] - 1;
         uint256 tokenOutId = _tokenToId[tokenOut] - 1;
 
+        return _setRoute(b, ptr, tokenInId, tokenOutId, pair, percent, flags);
+    }
+
+    function _setFeePercent(bytes memory b, uint256 ptr, uint16 feePercent) internal pure returns (uint256) {
+        return _setRoute(b, ptr, 0, 0, address(0), feePercent, 0);
+    }
+
+    function _setRoute(
+        bytes memory b,
+        uint256 ptr,
+        uint256 tokenInId,
+        uint256 tokenOutId,
+        address pair,
+        uint16 percent,
+        uint16 flags
+    ) private pure returns (uint256) {
         assembly ("memory-safe") {
             let value :=
                 or(shl(96, pair), or(shl(80, percent), or(shl(64, flags), or(shl(56, tokenInId), shl(48, tokenOutId)))))

@@ -18,6 +18,7 @@ library Flags {
     uint256 internal constant ID_OFFSET = 8;
     uint256 internal constant ID_MASK = 0xff00;
 
+    uint256 internal constant FEE_ID = 0 << ID_OFFSET; // 0 is reserved for the fee id
     uint256 internal constant UNISWAP_V2_ID = 1 << ID_OFFSET;
     uint256 internal constant LFJ_LEGACY_LIQUIDITY_BOOK_ID = 2 << ID_OFFSET;
     uint256 internal constant LFJ_LIQUIDITY_BOOK_ID = 3 << ID_OFFSET; // v2.1 and v2.2 have the same ABI for swaps

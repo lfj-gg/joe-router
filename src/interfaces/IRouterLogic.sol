@@ -14,6 +14,14 @@ interface IRouterLogic {
     error RouterLogic__InsufficientAmountOut(uint256 amountOut, uint256 amountOutMin);
     error RouterLogic__TransferTaxNotSupported();
     error RouterLogic__OnlyRouterOwner();
+    error RouterLogic__InvalidFeeData();
+    error RouterLogic__InvalidFeePercent();
+    error RouterLogic__InvalidFeeReceiver();
+
+    event FeeSent(address indexed token, address indexed from, address indexed to, uint256 amount);
+    event FeeReceiverSet(address indexed feeReceiver);
+
+    function getFeeReceiver() external view returns (address);
 
     function swapExactIn(
         address tokenIn,
@@ -36,4 +44,6 @@ interface IRouterLogic {
     ) external returns (uint256 totalIn, uint256 totalOut);
 
     function sweep(address token, address to, uint256 amount) external;
+
+    function setFeeReceiver(address feeReceiver) external;
 }

@@ -22,6 +22,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
     address public TMV2_TEST_AVAX = 0xbfFc7c9b5939686ee5765Db76B0Eb8dED88d7d3C;
 
     address alice = makeAddr("Alice");
+    address feeReceiver = makeAddr("FeeReceiver");
 
     uint256 minPrice;
     uint256 maxPrice;
@@ -30,7 +31,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
         vm.createSelectFork(StdChains.getChain("avalanche_fuji").rpcUrl, 38758068);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), address(0));
+        logic = new RouterLogic(address(router), address(0), feeReceiver);
 
         router.updateRouterLogic(address(logic), true);
 
@@ -217,10 +218,10 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
             address(logic), address(0), TEST, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
-        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::3");
-        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::4");
-        assertEq(alice.balance, maxAmountIn + 0.1e18 - totalIn, "test_SwapExactOutNativeToToken::5");
-        assertGe(IERC20(TEST).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::6");
+        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::2");
+        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::3");
+        assertEq(alice.balance, maxAmountIn + 0.1e18 - totalIn, "test_SwapExactOutNativeToToken::4");
+        assertGe(IERC20(TEST).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::5");
     }
 
     function test_SwapExactInTokenToNative() public {

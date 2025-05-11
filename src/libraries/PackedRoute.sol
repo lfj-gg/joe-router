@@ -269,4 +269,13 @@ library PackedRoute {
             tokenOutId := and(shr(TOKEN_OUT_SHIFT, value), UINT8_MASK)
         }
     }
+
+    /**
+     * @dev Returns the flags value from the swap value.
+     */
+    function getFlags(bytes32 value) internal pure returns (uint256 flags) {
+        assembly ("memory-safe") {
+            flags := and(shr(FLAGS_SHIFT, value), UINT16_MASK)
+        }
+    }
 }
