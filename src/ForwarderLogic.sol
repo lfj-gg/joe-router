@@ -83,9 +83,9 @@ contract ForwarderLogic is IForwarderLogic {
         if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
         if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
-        uint256 feePercent = uint256(uint16(bytes2(data[0:2])));
-        address approval = address(uint160(bytes20(data[2:22])));
-        address router = address(uint160(bytes20(data[22:42])));
+        address approval = address(uint160(bytes20(data[0:20])));
+        address router = address(uint160(bytes20(data[20:40])));
+        uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
         bytes memory routerData = data[42:];
 
         RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);

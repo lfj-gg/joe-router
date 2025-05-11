@@ -100,7 +100,7 @@ contract ForwarderLogicIntegrationTest is Test {
             AVAX_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), ODOS, ODOS, ODOS_USDC_AVAX)
+            abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_USDC_AVAX)
         );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_ODOS::1");
@@ -114,7 +114,7 @@ contract ForwarderLogicIntegrationTest is Test {
             USDC_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), ODOS, ODOS, ODOS_AVAX_USDC)
+            abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_AVAX_USDC)
         );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_ODOS::3");
@@ -136,7 +136,7 @@ contract ForwarderLogicIntegrationTest is Test {
             AVAX_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), OKX_APPROVAL, OKX, OKX_USDC_AVAX)
+            abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_USDC_AVAX)
         );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_OKX::1");
@@ -150,7 +150,7 @@ contract ForwarderLogicIntegrationTest is Test {
             USDC_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), OKX_APPROVAL, OKX, OKX_AVAX_USDC)
+            abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_AVAX_USDC)
         );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_OKX::3");
@@ -172,7 +172,7 @@ contract ForwarderLogicIntegrationTest is Test {
             AVAX_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), JAR, JAR, JAR_USDC_AVAX)
+            abi.encodePacked(JAR, JAR, uint16(0), JAR_USDC_AVAX)
         );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_JAR::1");
@@ -186,7 +186,7 @@ contract ForwarderLogicIntegrationTest is Test {
             USDC_AMOUNT / 2,
             alice,
             block.timestamp,
-            abi.encodePacked(uint16(0), JAR, JAR, JAR_AVAX_USDC)
+            abi.encodePacked(JAR, JAR, uint16(0), JAR_AVAX_USDC)
         );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_JAR::3");
