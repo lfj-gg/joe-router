@@ -25,7 +25,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
     address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
-        vm.createSelectFork("https://testnet-rpc.monad.xyz", 9551892);
+        vm.createSelectFork("https://testnet-rpc.monad.xyz", 16399750);
 
         router = new Router(WMON, address(this));
         logic = new RouterLogic(address(router), address(0), feeReceiver);
@@ -191,7 +191,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
 
     function test_SwapExactOutNativeToToken() public {
         uint128 amountOut = 1e6;
-        uint256 maxAmountIn = 0.1e18;
+        uint256 maxAmountIn = 1e18;
 
         vm.deal(alice, maxAmountIn + 0.2e18);
 
