@@ -89,9 +89,9 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         MockERC20(tokenIn).mint(from, amountIn);
 
         bytes memory data = abi.encodePacked(
+            address(this),
+            address(this),
             uint16(0),
-            address(this),
-            address(this),
             abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
         );
 
@@ -136,9 +136,9 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         uint256 feeAmountIn = (amountIn * feePercent) / 10_000;
 
         bytes memory data = abi.encodePacked(
+            address(this),
+            address(this),
             uint16(feePercent),
-            address(this),
-            address(this),
             abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
         );
 
@@ -171,14 +171,14 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__UntrustedRouter.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(uint16(0), address(1), address(1), "")
+            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(1), address(1), uint16(0), "")
         );
 
         forwarderLogic.updateTrustedRouter(address(0), true);
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__NoCode.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(uint16(0), address(this), address(0), "")
+            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(this), address(0), uint16(0), "")
         );
 
         revertData = bytes("Error");
@@ -191,7 +191,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(1),
             address(0),
-            abi.encodePacked(uint16(0), address(this), address(this), "")
+            abi.encodePacked(address(this), address(this), uint16(0), "")
         );
     }
 
