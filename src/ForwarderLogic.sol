@@ -18,14 +18,18 @@ contract ForwarderLogic is IForwarderLogic {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
+    uint256 internal constant BPS = 10000;
+
     address private immutable _router;
+    address private _feeReceiver;
 
     EnumerableSet.AddressSet private _trustedRouter;
     mapping(address => bool) private _blacklist;
 
-    constructor(address router) {
+    constructor(address router, address feeReceiver) {
         if (router == address(0)) revert ForwarderLogic__InvalidRouter();
         _router = router;
+        _setFeeReceiver(feeReceiver);
     }
 
     /**
@@ -50,12 +54,22 @@ contract ForwarderLogic is IForwarderLogic {
     }
 
     /**
+     * @dev Returns the fee receiver address.
+     */
+    function getFeeReceiver() external view override returns (address) {
+        return _feeReceiver;
+    }
+
+    /**
      * @dev Swaps an exact amount of tokenIn for as much tokenOut as possible using an external router.
      * The function will simply forward the call to the router and return the amount of tokenIn and tokenOut swapped.
      *
      * Requirements:
      * - The caller must be the router.
-     * - The data must be formatted using abi.encodePacked(approval, router, routerData).
+     * - The third party router must be trusted.
+     * - The data must be formatted using abi.encodePacked(uint128(feeAmount), approval, router, routerData).
+     * - The fee amount must be less than or equal to the amountIn.
+     * - The router data must use at most `amountIn - feeAmount` of tokenIn.
      */
     function swapExactIn(
         address tokenIn,
@@ -69,11 +83,22 @@ contract ForwarderLogic is IForwarderLogic {
         if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
         if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
-        address approval = address(uint160(bytes20(data[0:20])));
-        address router = address(uint160(bytes20(data[20:40])));
-        bytes memory routerData = data[40:];
+        uint256 feePercent = uint256(uint16(bytes2(data[0:2])));
+        address approval = address(uint160(bytes20(data[2:22])));
+        address router = address(uint160(bytes20(data[22:42])));
+        bytes memory routerData = data[42:];
 
         RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
+
+        uint256 feeAmount = (amountIn * feePercent) / BPS;
+        if (feeAmount > 0) {
+            amountIn -= feeAmount;
+
+            address feeReceiver = _feeReceiver;
+
+            TokenLib.transfer(tokenIn, feeReceiver, feeAmount);
+            emit FeeSent(tokenIn, from, feeReceiver, feeAmount);
+        }
 
         SafeERC20.forceApprove(IERC20(tokenIn), approval, amountIn);
 
@@ -138,6 +163,32 @@ contract ForwarderLogic is IForwarderLogic {
         _blacklist[account] = blacklisted;
 
         emit BlacklistUpdated(account, blacklisted);
+    }
+
+    /**
+     * @dev Updates the fee receiver.
+     *
+     * Requirements:
+     * - The caller must be the router owner.
+     */
+    function setFeeReceiver(address feeReceiver) external override {
+        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+
+        _setFeeReceiver(feeReceiver);
+    }
+
+    /**
+     * @dev Sets the fee receiver.
+     *
+     * Requirements:
+     * - The fee receiver must not be the zero address.
+     */
+    function _setFeeReceiver(address feeReceiver) private {
+        if (feeReceiver == address(0)) revert ForwarderLogic__InvalidFeeReceiver();
+
+        _feeReceiver = feeReceiver;
+
+        emit FeeReceiverSet(feeReceiver);
     }
 
     /**

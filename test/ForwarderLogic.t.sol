@@ -17,6 +17,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
 
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
+    address feeReceiver = makeAddr("feeReceiver");
 
     bytes public revertData;
     bytes public returnData;
@@ -58,7 +59,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
     }
 
     function setUp() public {
-        forwarderLogic = new ForwarderLogic(address(this));
+        forwarderLogic = new ForwarderLogic(address(this), feeReceiver);
 
         forwarderLogic.updateTrustedRouter(address(this), true);
 
@@ -71,7 +72,10 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
 
     function test_Constructor() public {
         vm.expectRevert(IForwarderLogic.ForwarderLogic__InvalidRouter.selector);
-        new ForwarderLogic(address(0));
+        new ForwarderLogic(address(0), feeReceiver);
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__InvalidFeeReceiver.selector);
+        new ForwarderLogic(address(this), address(0));
     }
 
     function test_Fuzz_SwapExactIn(bool zeroToOne, uint256 amountIn, uint256 amountOut, address from, address to)
@@ -85,6 +89,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         MockERC20(tokenIn).mint(from, amountIn);
 
         bytes memory data = abi.encodePacked(
+            uint16(0),
             address(this),
             address(this),
             abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
@@ -106,6 +111,54 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactIn::8");
     }
 
+    function test_Fuzz_SwapExactInWithFee(
+        bool zeroToOne,
+        uint256 amountIn,
+        uint256 feePercent,
+        uint256 amountOut,
+        address from,
+        address to
+    ) public {
+        if (from == address(0) || from == address(this) || from == address(forwarderLogic) || from == feeReceiver) {
+            from = address(1);
+        }
+        if (to == from || to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver)
+        {
+            to = address(2);
+        }
+        amountIn = bound(amountIn, 1, type(uint256).max / 10_000);
+        feePercent = bound(feePercent, 0, 10_000);
+
+        (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
+
+        MockERC20(tokenIn).mint(from, amountIn);
+
+        uint256 feeAmountIn = (amountIn * feePercent) / 10_000;
+
+        bytes memory data = abi.encodePacked(
+            uint16(feePercent),
+            address(this),
+            address(this),
+            abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
+        );
+
+        vm.prank(from);
+        IERC20(tokenIn).approve(address(this), amountIn);
+
+        forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, data);
+
+        assertEq(IERC20(tokenIn).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFee::1");
+        assertEq(IERC20(tokenIn).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFee::2");
+        assertEq(IERC20(tokenIn).balanceOf(to), 0, "test_Fuzz_SwapExactInWithFee::3");
+        assertEq(IERC20(tokenIn).balanceOf(address(this)), amountIn - feeAmountIn, "test_Fuzz_SwapExactInWithFee::4");
+        assertEq(IERC20(tokenIn).balanceOf(feeReceiver), feeAmountIn, "test_Fuzz_SwapExactInWithFee::5");
+
+        assertEq(IERC20(tokenOut).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFee::6");
+        assertEq(IERC20(tokenOut).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFee::7");
+        assertEq(IERC20(tokenOut).balanceOf(to), amountOut, "test_Fuzz_SwapExactInWithFee::8");
+        assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactInWithFee::9");
+    }
+
     function test_Fuzz_Revert_SwapExactIn(address caller) public {
         vm.assume(caller != address(this));
 
@@ -114,25 +167,31 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         forwarderLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), "");
 
         vm.expectRevert();
-        forwarderLogic.swapExactIn(token0, address(0), 0, 0, address(0), address(0), new bytes(39));
+        forwarderLogic.swapExactIn(token0, address(0), 0, 0, address(0), address(0), new bytes(55));
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__UntrustedRouter.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(1), address(1), "")
+            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(uint16(0), address(1), address(1), "")
         );
 
         forwarderLogic.updateTrustedRouter(address(0), true);
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__NoCode.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(this), address(0), "")
+            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(uint16(0), address(this), address(0), "")
         );
 
         revertData = bytes("Error");
 
         vm.expectRevert("Error");
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(this), address(this), "")
+            token0,
+            address(0),
+            0,
+            0,
+            address(1),
+            address(0),
+            abi.encodePacked(uint16(0), address(this), address(this), "")
         );
     }
 
@@ -211,5 +270,24 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         forwarderLogic.updateBlacklist(user, false);
 
         assertFalse(forwarderLogic.isBlacklisted(user), "test_Fuzz_Blacklist::3");
+    }
+
+    function test_Fuzz_SetFeeReceiver(address newFeeReceiver) public {
+        vm.assume(newFeeReceiver != address(0));
+
+        forwarderLogic.setFeeReceiver(newFeeReceiver);
+
+        assertEq(forwarderLogic.getFeeReceiver(), newFeeReceiver, "test_Fuzz_SetFeeReceiver::1");
+
+        forwarderLogic.setFeeReceiver(feeReceiver);
+
+        assertEq(forwarderLogic.getFeeReceiver(), feeReceiver, "test_Fuzz_SetFeeReceiver::2");
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__InvalidFeeReceiver.selector);
+        forwarderLogic.setFeeReceiver(address(0));
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__OnlyRouterOwner.selector);
+        vm.prank(alice);
+        forwarderLogic.setFeeReceiver(newFeeReceiver);
     }
 }
