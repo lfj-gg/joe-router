@@ -56,23 +56,23 @@ abstract contract RouterAdapter {
      * @dev Returns the amount of tokenIn needed to get amountOut from the pair.
      *
      * Requirements:
-     * - The id of the flags must be valid.
+     * - The id of the flags must be valid and not the FEE_ID.
      */
-    function _getAmountIn(address pair, uint256 flags, uint256 amountOut) internal returns (uint256) {
+    function _getAmountIn(address pair, uint256 flags, uint256 amountOut) internal returns (uint256 amountIn) {
         uint256 id = Flags.id(flags);
 
         if (id == Flags.UNISWAP_V2_ID) {
-            return _getAmountInUV2(pair, flags, amountOut);
+            amountIn = _getAmountInUV2(pair, flags, amountOut);
         } else if (id == Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID) {
-            return _getAmountInLegacyLB(pair, flags, amountOut);
+            amountIn = _getAmountInLegacyLB(pair, flags, amountOut);
         } else if (id == Flags.LFJ_LIQUIDITY_BOOK_ID) {
-            return _getAmountInLB(pair, flags, amountOut);
+            amountIn = _getAmountInLB(pair, flags, amountOut);
         } else if (id == Flags.UNISWAP_V3_ID) {
-            return _getAmountInUV3(pair, flags, amountOut);
+            amountIn = _getAmountInUV3(pair, flags, amountOut);
         } else if (id == Flags.LFJ_TOKEN_MILL_ID) {
-            return _getAmountInTM(pair, flags, amountOut);
+            amountIn = _getAmountInTM(pair, flags, amountOut);
         } else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) {
-            return _getAmountInTMV2(pair, flags, amountOut);
+            amountIn = _getAmountInTMV2(pair, flags, amountOut);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -82,7 +82,7 @@ abstract contract RouterAdapter {
      * @dev Swaps tokens from the sender to the recipient.
      *
      * Requirements:
-     * - The id of the flags must be valid.
+     * - The id of the flags must be valid and not the FEE_ID.
      */
     function _swap(address pair, address tokenIn, uint256 amountIn, address recipient, uint256 flags)
         internal

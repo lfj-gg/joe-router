@@ -20,16 +20,27 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
 
     uint256 internal constant BPS = 10000;
 
+    address private _feeReceiver;
+
     /**
      * @dev Constructor for the RouterLogic contract.
      *
      * Requirements:
      * - The router address must be a contract with code.
+     * - The fee receiver address must not be the zero address.
      */
-    constructor(address router, address routerV2_0) RouterAdapter(routerV2_0) {
+    constructor(address router, address routerV2_0, address feeReceiver) RouterAdapter(routerV2_0) {
         if (router.code.length == 0) revert RouterLogic__InvalidRouter();
 
         _router = router;
+        _setFeeReceiver(feeReceiver);
+    }
+
+    /**
+     * @dev Returns the fee receiver address.
+     */
+    function getFeeReceiver() external view override returns (address) {
+        return _feeReceiver;
     }
 
     /**
@@ -55,23 +66,24 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         address to,
         bytes calldata route
     ) external override returns (uint256, uint256) {
-        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
+        (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
+
+        uint256 feeAmount = _getFee(route, feePtr, amountIn, true);
+        uint256 amountInWithoutFee = amountIn - feeAmount;
+
+        _sendFee(route, 0, from, feeAmount);
 
         uint256[] memory balances = new uint256[](nbTokens);
 
-        balances[0] = amountIn;
-        uint256 total = amountIn;
+        balances[0] = amountInWithoutFee;
+        uint256 total = amountInWithoutFee;
 
         bytes32 value;
-        {
-            address from_ = from;
-            address to_ = to;
-            for (uint256 i; i < nbSwaps; i++) {
-                (ptr, value) = PackedRoute.next(route, ptr);
+        for (uint256 i; i < nbSwaps; i++) {
+            (ptr, value) = PackedRoute.next(route, ptr);
 
-                unchecked {
-                    total += _swapExactInSingle(route, balances, from_, to_, value);
-                }
+            unchecked {
+                total += _swapExactInSingle(route, balances, from, to, value);
             }
         }
 
@@ -108,24 +120,27 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         address to,
         bytes calldata route
     ) external override returns (uint256 totalIn, uint256 totalOut) {
-        (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
+        (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
         if (PackedRoute.isTransferTax(route)) revert RouterLogic__TransferTaxNotSupported();
 
         (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(route, amountOut, nbTokens, nbSwaps);
 
-        if (amountIn > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountIn, amountInMax);
+        uint256 feeAmount = _getFee(route, feePtr, amountIn, false);
+        uint256 amountInWithFee = amountIn + feeAmount;
+
+        if (amountInWithFee > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountInWithFee, amountInMax);
+
+        _sendFee(route, 0, from, feeAmount);
 
         bytes32 value;
-        address from_ = from;
-        address to_ = to;
         for (uint256 i; i < nbSwaps; i++) {
             (ptr, value) = PackedRoute.next(route, ptr);
 
-            _swapExactOutSingle(route, nbTokens, from_, to_, value, amountsIn[i]);
+            _swapExactOutSingle(route, nbTokens, from, to, value, amountsIn[i]);
         }
 
-        return (amountIn, amountOut);
+        return (amountInWithFee, amountOut);
     }
 
     /**
@@ -138,6 +153,17 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         if (msg.sender != Ownable(_router).owner()) revert RouterLogic__OnlyRouterOwner();
 
         token == address(0) ? TokenLib.transferNative(to, amount) : TokenLib.transfer(token, to, amount);
+    }
+
+    /**
+     * @dev Sets the fee receiver address.
+     *
+     * Requirements:
+     * - The caller must be the router owner.
+     */
+    function setFeeReceiver(address feeReceiver) external override {
+        if (msg.sender != Ownable(_router).owner()) revert RouterLogic__OnlyRouterOwner();
+        _setFeeReceiver(feeReceiver);
     }
 
     /**
@@ -163,17 +189,58 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
     function _startAndVerify(bytes calldata route, address tokenIn, address tokenOut)
         private
         view
-        returns (uint256 ptr, uint256 nbTokens, uint256 nbSwaps)
+        returns (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps)
     {
         if (msg.sender != _router) revert RouterLogic__OnlyRouter();
 
         (ptr, nbTokens, nbSwaps) = PackedRoute.start(route);
 
         if (nbTokens < 2) revert RouterLogic__InsufficientTokens();
-        if (nbSwaps == 0) revert RouterLogic__ZeroSwap();
+
+        (uint256 nextPtr, bytes32 value) = PackedRoute.next(route, ptr);
+        uint256 flags = PackedRoute.getFlags(value);
+
+        if (Flags.id(flags) == Flags.FEE_ID) {
+            if (nbSwaps < 2) revert RouterLogic__ZeroSwap();
+            unchecked {
+                --nbSwaps;
+            }
+            feePtr = ptr;
+            ptr = nextPtr;
+        } else {
+            if (nbSwaps == 0) revert RouterLogic__ZeroSwap();
+        }
 
         if (PackedRoute.token(route, 0) != tokenIn) revert RouterLogic__InvalidTokenIn();
         if (PackedRoute.token(route, nbTokens - 1) != tokenOut) revert RouterLogic__InvalidTokenOut();
+    }
+
+    /**
+     * @dev Returns the fee amount added on the swap.
+     * The fee is calculated as follows:
+     * - if `isSwapExactIn`, the fee is calculated as `(amountIn * feePercent) / BPS`
+     *   else, the fee is calculated as `(amountIn * BPS) / (BPS - feePercent)`
+     *
+     * Requirements:
+     * - The data must use a the valid format: `(address(0), feePercent, Flags.FEE_ID, 0, 0)`
+     * - The feePercent must be greater than 0 and less than BPS.
+     */
+    function _getFee(bytes calldata route, uint256 feePtr, uint256 amountIn, bool isSwapExactIn)
+        private
+        pure
+        returns (uint256 feeAmount)
+    {
+        if (feePtr > 0) {
+            (, bytes32 value) = PackedRoute.next(route, feePtr);
+
+            (address pair, uint256 feePercent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
+                PackedRoute.decode(value);
+
+            if ((uint256(uint160(pair)) | flags | tokenInId | tokenOutId) != 0) revert RouterLogic__InvalidFeeData();
+            if (feePercent == 0 || feePercent >= BPS) revert RouterLogic__InvalidFeePercent();
+
+            feeAmount = isSwapExactIn ? (amountIn * feePercent) / BPS : (amountIn * feePercent) / (BPS - feePercent);
+        }
     }
 
     /**
@@ -313,5 +380,30 @@ contract RouterLogic is RouterAdapter, IRouterLogic {
         }
 
         return (token, amount);
+    }
+
+    /**
+     * @dev Helper function to send the fee to the fee receiver.
+     */
+    function _sendFee(bytes calldata route, uint256 tokenInId, address from, uint256 feeAmount) private {
+        if (feeAmount > 0) {
+            address feeReceiver = _feeReceiver;
+            (address token,) = _transfer(route, tokenInId, from, feeReceiver, feeAmount);
+            emit FeeSent(token, from, feeReceiver, feeAmount);
+        }
+    }
+
+    /**
+     * @dev Helper function to set the fee receiver address.
+     *
+     * Requirements:
+     * - The fee receiver address must not be the zero address.
+     */
+    function _setFeeReceiver(address feeReceiver) private {
+        if (feeReceiver == address(0)) revert RouterLogic__InvalidFeeReceiver();
+
+        _feeReceiver = feeReceiver;
+
+        emit FeeReceiverSet(feeReceiver);
     }
 }

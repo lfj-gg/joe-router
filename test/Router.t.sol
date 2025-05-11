@@ -622,7 +622,9 @@ contract MockRouterLogic is IRouterLogic {
         if (route.length >= 128) return abi.decode(route[64:], (uint256, uint256));
     }
 
+    function getFeeReceiver() external view returns (address) {}
     function sweep(address, address, uint256) external {}
+    function setFeeReceiver(address) external {}
 
     function test() public pure {}
 }

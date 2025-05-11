@@ -22,12 +22,13 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
     address public PSV3_MON_USDC = 0xb39E5Fa485CAC152d9e62d3A20E6a6efb3F9DA69;
 
     address alice = makeAddr("Alice");
+    address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
         vm.createSelectFork("https://testnet-rpc.monad.xyz", 9551892);
 
         router = new Router(WMON, address(this));
-        logic = new RouterLogic(address(router), address(0));
+        logic = new RouterLogic(address(router), address(0), feeReceiver);
 
         router.updateRouterLogic(address(logic), true);
 
@@ -207,10 +208,10 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
             address(logic), address(0), USDC, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
-        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::3");
-        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::4");
-        assertEq(alice.balance, maxAmountIn + 0.2e18 - totalIn, "test_SwapExactOutNativeToToken::5");
-        assertGe(IERC20(USDC).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::6");
+        assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::1");
+        assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::2");
+        assertEq(alice.balance, maxAmountIn + 0.2e18 - totalIn, "test_SwapExactOutNativeToToken::3");
+        assertGe(IERC20(USDC).balanceOf(alice), amountOut, "test_SwapExactOutNativeToToken::4");
     }
 
     function test_SwapExactInTokenToNative() public {

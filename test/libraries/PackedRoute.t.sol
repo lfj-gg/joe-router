@@ -126,16 +126,17 @@ contract PackedRouteTest is Test {
             assertEq(flags, uint16(detail >> 64), "_nextPrevious::9");
             assertEq(tokenInId, uint8(detail >> 56), "_nextPrevious::10");
             assertEq(tokenOutId, uint8(detail >> 48), "_nextPrevious::11");
+            assertEq(PackedRoute.getFlags(value), flags, "_nextPrevious::12");
         }
 
         for (uint256 i = details.length; i > 0; i--) {
             (ptr, value) = PackedRoute.previous(route, ptr);
 
-            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i - 1), "_nextPrevious::12");
+            assertEq(ptr, startPtr + PackedRoute.ROUTE_SIZE * (i - 1), "_nextPrevious::13");
             assertEq(
                 value & 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000,
                 details[i - 1],
-                "_nextPrevious::13"
+                "_nextPrevious::14"
             );
 
             (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
@@ -143,11 +144,12 @@ contract PackedRouteTest is Test {
 
             uint256 detail = uint256(bytes32(details[i - 1]));
 
-            assertEq(pair, address(uint160(detail >> 96)), "_nextPrevious::14");
-            assertEq(percent, uint16(detail >> 80), "_nextPrevious::15");
-            assertEq(flags, uint16(detail >> 64), "_nextPrevious::16");
-            assertEq(tokenInId, uint8(detail >> 56), "_nextPrevious::17");
-            assertEq(tokenOutId, uint8(detail >> 48), "_nextPrevious::18");
+            assertEq(pair, address(uint160(detail >> 96)), "_nextPrevious::15");
+            assertEq(percent, uint16(detail >> 80), "_nextPrevious::16");
+            assertEq(flags, uint16(detail >> 64), "_nextPrevious::17");
+            assertEq(tokenInId, uint8(detail >> 56), "_nextPrevious::18");
+            assertEq(tokenOutId, uint8(detail >> 48), "_nextPrevious::19");
+            assertEq(PackedRoute.getFlags(value), flags, "_nextPrevious::20");
         }
     }
 }
@@ -181,5 +183,9 @@ contract PackedRouteLib {
         returns (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId)
     {
         return PackedRoute.decode(value);
+    }
+
+    function getFlags(bytes32 value) external pure returns (uint256 flags) {
+        return PackedRoute.getFlags(value);
     }
 }

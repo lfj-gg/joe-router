@@ -294,10 +294,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
         uint256 balance = TokenLib.universalBalanceOf(tokenOut, recipient);
 
-        address logic_ = logic; // avoid stack too deep error
-
         (totalIn, totalOut) =
-            RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic_);
+            RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic);
 
         if (recipient == address(this)) {
             totalOut = _verifySwap(tokenOut, recipient, balance, amountOut, totalOut);
