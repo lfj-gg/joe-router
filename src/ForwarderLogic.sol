@@ -67,7 +67,7 @@ contract ForwarderLogic is IForwarderLogic {
      * Requirements:
      * - The caller must be the router.
      * - The third party router must be trusted.
-     * - The data must be formatted using abi.encodePacked(uint128(feeAmount), approval, router, routerData).
+     * - The data must be formatted using abi.encodePacked(approval, router, uint16(feePercent), routerData).
      * - The fee amount must be less than or equal to the amountIn.
      * - The router data must use at most `amountIn - feeAmount` of tokenIn.
      */
