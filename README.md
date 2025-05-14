@@ -16,6 +16,10 @@ The RouterLogic contract implements the logic for swapping tokens using a route.
 
 The RouterAdapter contract provides helper functions for interacting with different types of pairs, including Uniswap V2, LFJ Legacy Liquidity Book, LFJ Liquidity Book, Uniswap V3 pairs, and LFJ Token Mill pairs.
 
+### ForwarderLogic.sol
+
+The ForwarderLogic contract serves as a utility for forwarding calls to a third-party router contract. It simplifies user interactions by eliminating the need for repeated token approvals. Additionally, it enhances security by ensuring that users do not overpay or receive less than the expected amount of tokens during transactions. This contract acts as a safeguard, providing a seamless and secure experience when interacting with external router contracts.
+
 ## Libraries
 
 ### TokenLib.sol
