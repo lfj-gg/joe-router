@@ -92,15 +92,13 @@ contract ForwarderLogic is IForwarderLogic {
 
         uint256 feeAmount = (amountIn * feePercent) / BPS;
         if (feeAmount > 0) {
-            amountIn -= feeAmount;
-
             address feeReceiver = _feeReceiver;
 
             TokenLib.transfer(tokenIn, feeReceiver, feeAmount);
             emit FeeSent(tokenIn, from, feeReceiver, feeAmount);
         }
 
-        SafeERC20.forceApprove(IERC20(tokenIn), approval, amountIn);
+        SafeERC20.forceApprove(IERC20(tokenIn), approval, amountIn - feeAmount);
 
         _call(router, routerData);
 
