@@ -47,6 +47,8 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
      * - The entire balance of all tokens must have been swapped to the last token.
      * - The actual amountOut must be greater than or equal to the amountOutMin.
+     * - If the route has a fee, it should be the first route and the data must use the valid format:
+     *   `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
      */
     function swapExactIn(
         address tokenIn,
@@ -101,6 +103,8 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * - The entire balance of all tokens must have been used to calculate the amountIn.
      *   (due to potential rounding, some dust might be left in the contract after the swap)
      * - The actual amountIn must be less than or equal to the amountInMax.
+     * - If the route has a fee, it should be the first route and the data must use the valid format:
+     *   `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
      */
     function swapExactOut(
         address tokenIn,
@@ -212,7 +216,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      *   else, the fee is calculated as `(amountIn * BPS) / (BPS - feePercent)`
      *
      * Requirements:
-     * - The data must use a the valid format: `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
+     * - The data must use the valid format: `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
      * - The feePercent must be greater than 0 and less than BPS.
      */
     function _getFee(bytes calldata route, uint256 feePtr, uint256 amountIn, bool isSwapExactIn)
