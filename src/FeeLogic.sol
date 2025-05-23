@@ -8,6 +8,9 @@ import {TokenLib} from "./libraries/TokenLib.sol";
  * @title FeeLogic
  * @notice This contract handles the fee logic for the router.
  * It allows setting the protocol fee parameters and sending fees to the protocol fee recipient.
+ * When sending fees, it splits the fee between the protocol fee recipient and the fee recipient
+ * based on the protocol fee share. E.g. if the protocol fee share is 10% and the fee amount is 100,
+ * then 10 will be sent to the protocol fee recipient and 90 will be sent to the fee recipient.
  */
 abstract contract FeeLogic is IFeeLogic {
     uint256 internal constant BPS = 10_000;
