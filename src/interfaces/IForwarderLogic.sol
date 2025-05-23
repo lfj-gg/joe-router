@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IForwarderLogic {
+import {IFeeLogic} from "./IFeeLogic.sol";
+
+interface IForwarderLogic is IFeeLogic {
     error ForwarderLogic__InvalidRouter();
     error ForwarderLogic__NotImplemented();
     error ForwarderLogic__OnlyRouterOwner();
@@ -10,20 +12,15 @@ interface IForwarderLogic {
     error ForwarderLogic__RouterUpdateFailed();
     error ForwarderLogic__UntrustedRouter();
     error ForwarderLogic__Blacklisted();
-    error ForwarderLogic__InvalidFeeReceiver();
 
     event TrustedRouterUpdated(address indexed router, bool trusted);
     event BlacklistUpdated(address indexed account, bool blacklisted);
-    event FeeReceiverSet(address indexed feeReceiver);
-    event FeeSent(address indexed token, address indexed from, address indexed to, uint256 amount);
 
     function getTrustedRouterLength() external view returns (uint256);
 
     function getTrustedRouterAt(uint256 index) external view returns (address);
 
     function isBlacklisted(address account) external view returns (bool);
-
-    function getFeeReceiver() external view returns (address);
 
     function swapExactIn(
         address tokenIn,
@@ -40,6 +37,4 @@ interface IForwarderLogic {
     function updateTrustedRouter(address router, bool add) external;
 
     function updateBlacklist(address account, bool blacklisted) external;
-
-    function setFeeReceiver(address feeReceiver) external;
 }

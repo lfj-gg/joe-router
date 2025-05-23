@@ -42,12 +42,13 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
 
     address alice = makeAddr("Alice");
     address feeReceiver = makeAddr("FeeReceiver");
+    address thirdPartyFeeReceiver = makeAddr("thirdPartyFeeReceiver");
 
     function setUp() public {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 50448676);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), LB0_ROUTER, feeReceiver);
+        logic = new RouterLogic(address(router), LB0_ROUTER, feeReceiver, 0.15e4);
 
         router.updateRouterLogic(address(logic), true);
 
@@ -163,7 +164,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WETH, BTCB, LB2_WETH_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
@@ -211,13 +212,21 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             router.swapExactIn{value: 0.1e18}(address(logic), WETH, USDT, amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
+        uint256 feeAmount = amountIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToTokenWithFee::4");
         assertGt(totalOut, 0, "test_SwapExactInTokenToTokenWithFee::5");
         assertEq(totalOut, expectedOut, "test_SwapExactInTokenToTokenWithFee::6");
         assertEq(alice.balance, 0.1e18, "test_SwapExactInTokenToTokenWithFee::7");
         assertEq(IERC20(WETH).balanceOf(alice), 0, "test_SwapExactInTokenToTokenWithFee::8");
-        assertEq(IERC20(WETH).balanceOf(feeReceiver), amountIn / 10, "test_SwapExactInTokenToTokenWithFee::9");
-        assertEq(IERC20(USDT).balanceOf(alice), totalOut, "test_SwapExactInTokenToTokenWithFee::10");
+        assertEq(IERC20(WETH).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactInTokenToTokenWithFee::9");
+        assertEq(
+            IERC20(WETH).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactInTokenToTokenWithFee::10"
+        );
+        assertEq(IERC20(USDT).balanceOf(alice), totalOut, "test_SwapExactInTokenToTokenWithFee::11");
     }
 
     function test_SwapExactOutTokenToToken() public {
@@ -316,7 +325,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, WETH, WAVAX, LB1_WETH_AVAX, 1.0e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WETH, BTCB, LB2_WETH_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WETH, WAVAX, UV3_WETH_AVAX, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
@@ -373,13 +382,21 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
         vm.stopPrank();
 
+        uint256 feeAmount = totalIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToTokenWithFee::4");
         assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToTokenWithFee::5");
         assertGe(totalOut, amountOut, "test_SwapExactOutTokenToTokenWithFee::6");
         assertEq(alice.balance, 0.1e18, "test_SwapExactOutTokenToTokenWithFee::7");
         assertEq(IERC20(WETH).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToTokenWithFee::8");
-        assertEq(IERC20(WETH).balanceOf(feeReceiver), totalIn / 10, "test_SwapExactOutTokenToTokenWithFee::9");
-        assertEq(IERC20(USDT).balanceOf(alice), amountOut, "test_SwapExactOutTokenToTokenWithFee::10");
+        assertEq(IERC20(WETH).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactOutTokenToTokenWithFee::9");
+        assertEq(
+            IERC20(WETH).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactOutTokenToTokenWithFee::10"
+        );
+        assertEq(IERC20(USDT).balanceOf(alice), amountOut, "test_SwapExactOutTokenToTokenWithFee::11");
     }
 
     function test_SwapExactInNativeToToken() public {
@@ -430,7 +447,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.2e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 0.3e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
@@ -447,12 +464,20 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             address(logic), address(0), USDT, amountIn, 1, alice, block.timestamp, route
         );
 
+        uint256 feeAmount = amountIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToTokenWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToTokenWithFee::2");
         assertEq(alice.balance, 0.1e18, "test_SwapExactInNativeToTokenWithFee::3");
         assertEq(IERC20(WAVAX).balanceOf(alice), 0, "test_SwapExactInNativeToTokenWithFee::4");
-        assertEq(IERC20(WAVAX).balanceOf(feeReceiver), amountIn / 10, "test_SwapExactInNativeToTokenWithFee::5");
-        assertEq(IERC20(USDT).balanceOf(alice), totalOut, "test_SwapExactInNativeToTokenWithFee::6");
+        assertEq(IERC20(WAVAX).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactInNativeToTokenWithFee::5");
+        assertEq(
+            IERC20(WAVAX).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactInNativeToTokenWithFee::6"
+        );
+        assertEq(IERC20(USDT).balanceOf(alice), totalOut, "test_SwapExactInNativeToTokenWithFee::7");
     }
 
     function test_SwapExactOutNativeToToken() public {
@@ -505,7 +530,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, USDT);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, BTCB, LB2_AVAX_BTCB, 1.0e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, BTCB, LB1_BTCB_AVAX, 0.4e4, LB12_ID | ONE_FOR_ZERO);
@@ -522,12 +547,20 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
             address(logic), address(0), USDT, amountOut, maxAmountIn, alice, block.timestamp, route
         );
 
+        uint256 feeAmount = totalIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToTokenWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutNativeToTokenWithFee::2");
         assertEq(alice.balance, maxAmountIn + 0.1e18 - totalIn, "test_SwapExactOutNativeToTokenWithFee::3");
         assertEq(IERC20(WAVAX).balanceOf(alice), 0, "test_SwapExactOutNativeToTokenWithFee::4");
-        assertEq(IERC20(WAVAX).balanceOf(feeReceiver), totalIn / 10, "test_SwapExactOutNativeToTokenWithFee::5");
-        assertEq(IERC20(USDT).balanceOf(alice), amountOut, "test_SwapExactOutNativeToTokenWithFee::6");
+        assertEq(IERC20(WAVAX).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactOutNativeToTokenWithFee::5");
+        assertEq(
+            IERC20(WAVAX).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactOutNativeToTokenWithFee::6"
+        );
+        assertEq(IERC20(USDT).balanceOf(alice), amountOut, "test_SwapExactOutNativeToTokenWithFee::7");
     }
 
     function test_SwapExactInTokenToNative() public {
@@ -582,7 +615,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, BTCB);
         ptr = _setToken(route, ptr, WAVAX);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, USDT, USDC, UV3_USDT_USDC, 0.4e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, USDT, USDC, LB2_USDT_USDC, 1.0e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, USDC, BTCB, UV3_BTCB_USDC, 0.2e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
@@ -601,11 +634,19 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
         vm.stopPrank();
 
+        uint256 feeAmount = amountIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNativeWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInTokenToNativeWithFee::2");
         assertEq(alice.balance, 0.1e18 + totalOut, "test_SwapExactInTokenToNativeWithFee::3");
         assertEq(IERC20(USDT).balanceOf(alice), 0, "test_SwapExactInTokenToNativeWithFee::4");
-        assertEq(IERC20(USDT).balanceOf(feeReceiver), amountIn / 10, "test_SwapExactInTokenToNativeWithFee::5");
+        assertEq(IERC20(USDT).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactInTokenToNativeWithFee::5");
+        assertEq(
+            IERC20(USDT).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactInTokenToNativeWithFee::6"
+        );
     }
 
     function test_SwapExactOutTokenToNative() public {
@@ -662,7 +703,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, BTCB);
         ptr = _setToken(route, ptr, WAVAX);
 
-        ptr = _setFeePercent(route, ptr, 0.1e4); // 10% fee
+        ptr = _setFeePercent(route, ptr, thirdPartyFeeReceiver, 0.1e4); // 10% fee
         ptr = _setRoute(route, ptr, USDT, USDC, UV3_USDT_USDC, 1.0e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, USDT, USDC, LB2_USDT_USDC, 0.6e4, LB12_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, USDC, BTCB, UV3_BTCB_USDC, 1.0e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
@@ -681,11 +722,19 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
         vm.stopPrank();
 
+        uint256 feeAmount = totalIn * 0.1e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNativeWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutTokenToNativeWithFee::2");
         assertEq(alice.balance, 0.1e18 + totalOut, "test_SwapExactOutTokenToNativeWithFee::3");
         assertEq(IERC20(USDT).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToNativeWithFee::4");
-        assertEq(IERC20(USDT).balanceOf(feeReceiver), totalIn / 10, "test_SwapExactOutTokenToNativeWithFee::5");
+        assertEq(IERC20(USDT).balanceOf(feeReceiver), protocolFeeAmount, "test_SwapExactOutTokenToNativeWithFee::5");
+        assertEq(
+            IERC20(USDT).balanceOf(thirdPartyFeeReceiver),
+            feeAmount - protocolFeeAmount,
+            "test_SwapExactOutTokenToNativeWithFee::6"
+        );
     }
 
     function test_UV3OutOfLiquidity() public {

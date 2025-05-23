@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import "../src/Router.sol";
 import "../src/RouterLogic.sol";
 import "./PackedRouteHelper.sol";
-import "./mocks/MockERC20.sol";
 import "./interfaces/ITMPairV2.sol";
+import "./mocks/MockERC20.sol";
 
 contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
     Router public router;
@@ -31,7 +31,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
         vm.createSelectFork(StdChains.getChain("avalanche_fuji").rpcUrl, 38758068);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), address(0), feeReceiver);
+        logic = new RouterLogic(address(router), address(0), feeReceiver, 0.15e4);
 
         router.updateRouterLogic(address(logic), true);
 

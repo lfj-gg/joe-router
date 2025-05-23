@@ -3,11 +3,12 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "../src/RouterLogic.sol";
 import "../src/RouterAdapter.sol";
+import "../src/RouterLogic.sol";
+import "../src/interfaces/IFeeLogic.sol";
+import "./PackedRouteHelper.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockTaxToken.sol";
-import "./PackedRouteHelper.sol";
 
 contract RouterLogicTest is Test, PackedRouteHelper {
     RouterLogic public routerLogic;
@@ -70,7 +71,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     }
 
     function setUp() public {
-        routerLogic = new RouterLogic(address(this), address(0), feeReceiver);
+        routerLogic = new RouterLogic(address(this), address(0), feeReceiver, 0.15e4);
 
         token0 = new MockERC20("Token0", "T0", 18);
         token1 = new MockERC20("Token1", "T1", 9);
@@ -89,11 +90,14 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     }
 
     function test_Constructor() public {
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidRouter.selector);
-        new RouterLogic(address(0), address(1), address(0));
+        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        new RouterLogic(address(0), address(1), address(0), 0);
 
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeReceiver.selector);
-        new RouterLogic(address(this), address(1), address(0));
+        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        new RouterLogic(address(0), address(1), address(1), 10_001);
+
+        vm.expectRevert(IRouterLogic.RouterLogic__InvalidRouter.selector);
+        new RouterLogic(address(0), address(1), address(1), 0);
     }
 
     function test_Fuzz_Revert_SwapExactInStartAndVerify(
@@ -480,19 +484,29 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         routerLogic.sweep(address(0), address(0), 0);
     }
 
-    function test_Fuzz_SetFeeReceiver(address feeReceiver_) public {
-        vm.assume(feeReceiver_ != address(0));
+    function test_Fuzz_SetFeeParameters(address newFeeReceiver, uint96 feeShare) public {
+        vm.assume(newFeeReceiver != address(0));
+        uint256 validFeeShare = bound(feeShare, 0, 10_000);
 
-        routerLogic.setFeeReceiver(feeReceiver_);
+        routerLogic.setProtocolFeeParameters(newFeeReceiver, uint96(validFeeShare));
 
-        assertEq(routerLogic.getFeeReceiver(), feeReceiver_, "test_Fuzz_SetFeeReceiver::1");
+        assertEq(routerLogic.getProtocolFeeRecipient(), newFeeReceiver, "test_Fuzz_SetFeeParameters::1");
+        assertEq(routerLogic.getProtocolFeeShare(), validFeeShare, "test_Fuzz_SetFeeParameters::2");
 
-        routerLogic.setFeeReceiver(feeReceiver);
+        routerLogic.setProtocolFeeParameters(feeReceiver, 0);
 
-        assertEq(routerLogic.getFeeReceiver(), feeReceiver, "test_Fuzz_SetFeeReceiver::2");
+        assertEq(routerLogic.getProtocolFeeRecipient(), feeReceiver, "test_Fuzz_SetFeeParameters::3");
+        assertEq(routerLogic.getProtocolFeeShare(), 0, "test_Fuzz_SetFeeParameters::4");
 
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeReceiver.selector);
-        routerLogic.setFeeReceiver(address(0));
+        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        routerLogic.setProtocolFeeParameters(address(0), uint96(validFeeShare));
+
+        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        routerLogic.setProtocolFeeParameters(newFeeReceiver, uint96(bound(feeShare, 10_001, type(uint96).max)));
+
+        vm.expectRevert(IRouterLogic.RouterLogic__OnlyRouterOwner.selector);
+        vm.prank(alice);
+        routerLogic.setProtocolFeeParameters(newFeeReceiver, uint96(validFeeShare));
     }
 
     function test_Fuzz_Revert_SwapWithFee(uint256 feePercent) public {
@@ -502,11 +516,6 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         ptr = _setIsTransferTaxToken(route, ptr, false);
         ptr = _setToken(route, ptr, address(token0));
         ptr = _setToken(route, ptr, address(token1));
-        _setRoute(route, ptr, address(token0), address(token0), address(1), 1, 0);
-
-        vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
-        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
-
         _setRoute(route, ptr, address(token0), address(token1), address(0), 1, 1);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
@@ -530,6 +539,11 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         _setRoute(route, ptr, address(token0), address(token0), address(0), uint16(badFeePercent), 0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeePercent.selector);
+        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
+
+        _setRoute(route, ptr, address(token0), address(token0), address(0), uint16(5_000), 0);
+
+        vm.expectRevert(IFeeLogic.FeeLogic__InvalidFeeReceiver.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {PackedRoute} from "../src/libraries/PackedRoute.sol";
 import {Flags} from "../src/libraries/Flags.sol";
+import {PackedRoute} from "../src/libraries/PackedRoute.sol";
 
 abstract contract PackedRouteHelper {
     uint16 public ONE_FOR_ZERO = 0;
@@ -75,8 +75,12 @@ abstract contract PackedRouteHelper {
         return _setRoute(b, ptr, tokenInId, tokenOutId, pair, percent, flags);
     }
 
-    function _setFeePercent(bytes memory b, uint256 ptr, uint16 feePercent) internal pure returns (uint256) {
-        return _setRoute(b, ptr, 0, 0, address(0), feePercent, 0);
+    function _setFeePercent(bytes memory b, uint256 ptr, address feeRecipient, uint16 feePercent)
+        internal
+        pure
+        returns (uint256)
+    {
+        return _setRoute(b, ptr, 0, 0, feeRecipient, feePercent, 0);
     }
 
     function _setRoute(

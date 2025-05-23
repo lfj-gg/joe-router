@@ -1,35 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+import {FeeLogic} from "./FeeLogic.sol";
+import {IForwarderLogic} from "./interfaces/IForwarderLogic.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
 import {TokenLib} from "./libraries/TokenLib.sol";
-import {IForwarderLogic} from "./interfaces/IForwarderLogic.sol";
 
 /**
  * @title ForwarderLogic
  * @notice Forwarder logic contract to call another router.
  * Note: this contract will not work with transfer tax tokens.
  */
-contract ForwarderLogic is IForwarderLogic {
+contract ForwarderLogic is FeeLogic, IForwarderLogic {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
-    uint256 internal constant BPS = 10000;
-
     address private immutable _router;
-    address private _feeReceiver;
 
     EnumerableSet.AddressSet private _trustedRouter;
     mapping(address => bool) private _blacklist;
 
-    constructor(address router, address feeReceiver) {
+    constructor(address router, address protocolFeeReceiver, uint96 protocolFeeShare)
+        FeeLogic(protocolFeeReceiver, protocolFeeShare)
+    {
         if (router == address(0)) revert ForwarderLogic__InvalidRouter();
         _router = router;
-        _setFeeReceiver(feeReceiver);
     }
 
     /**
@@ -51,13 +50,6 @@ contract ForwarderLogic is IForwarderLogic {
      */
     function isBlacklisted(address account) external view override returns (bool) {
         return _blacklist[account];
-    }
-
-    /**
-     * @dev Returns the fee receiver address.
-     */
-    function getFeeReceiver() external view override returns (address) {
-        return _feeReceiver;
     }
 
     /**
@@ -86,17 +78,13 @@ contract ForwarderLogic is IForwarderLogic {
         address approval = address(uint160(bytes20(data[0:20])));
         address router = address(uint160(bytes20(data[20:40])));
         uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
-        bytes memory routerData = data[42:];
+        (address feeReceiver, bytes memory routerData) =
+            feePercent == 0 ? (address(0), data[42:]) : (address(uint160(bytes20(data[42:62]))), data[62:]);
 
         RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
 
         uint256 feeAmount = (amountIn * feePercent) / BPS;
-        if (feeAmount > 0) {
-            address feeReceiver = _feeReceiver;
-
-            TokenLib.transfer(tokenIn, feeReceiver, feeAmount);
-            emit FeeSent(tokenIn, from, feeReceiver, feeAmount);
-        }
+        _sendFee(tokenIn, address(this), feeReceiver, feeAmount);
 
         SafeERC20.forceApprove(IERC20(tokenIn), approval, amountIn - feeAmount);
 
@@ -128,7 +116,7 @@ contract ForwarderLogic is IForwarderLogic {
      * - The caller must be the router owner.
      */
     function sweep(address token, address to, uint256 amount) external override {
-        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+        _checkSender();
 
         token == address(0) ? TokenLib.transferNative(to, amount) : TokenLib.transfer(token, to, amount);
     }
@@ -140,7 +128,7 @@ contract ForwarderLogic is IForwarderLogic {
      * - The caller must be the router owner.
      */
     function updateTrustedRouter(address router, bool add) external override {
-        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+        _checkSender();
 
         if (!(add ? _trustedRouter.add(router) : _trustedRouter.remove(router))) {
             revert ForwarderLogic__RouterUpdateFailed();
@@ -156,7 +144,7 @@ contract ForwarderLogic is IForwarderLogic {
      * - The caller must be the router owner.
      */
     function updateBlacklist(address account, bool blacklisted) external override {
-        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+        _checkSender();
 
         _blacklist[account] = blacklisted;
 
@@ -164,29 +152,13 @@ contract ForwarderLogic is IForwarderLogic {
     }
 
     /**
-     * @dev Updates the fee receiver.
+     * @dev Checks if the sender is the router's owner.
      *
      * Requirements:
-     * - The caller must be the router owner.
+     * - The sender must be the router's owner.
      */
-    function setFeeReceiver(address feeReceiver) external override {
+    function _checkSender() internal view override {
         if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
-
-        _setFeeReceiver(feeReceiver);
-    }
-
-    /**
-     * @dev Sets the fee receiver.
-     *
-     * Requirements:
-     * - The fee receiver must not be the zero address.
-     */
-    function _setFeeReceiver(address feeReceiver) private {
-        if (feeReceiver == address(0)) revert ForwarderLogic__InvalidFeeReceiver();
-
-        _feeReceiver = feeReceiver;
-
-        emit FeeReceiverSet(feeReceiver);
     }
 
     /**

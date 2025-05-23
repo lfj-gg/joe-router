@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "../../src/libraries/RouterLib.sol";
 import "../../src/interfaces/IRouterLogic.sol";
+import "../../src/libraries/RouterLib.sol";
 import "../mocks/MockERC20.sol";
 
 contract RouterLibTest is Test {

@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import "../src/Router.sol";
 import "../src/RouterLogic.sol";
 import "./mocks/MockERC20.sol";
-import "./mocks/WNative.sol";
 import "./mocks/MockTaxToken.sol";
+import "./mocks/WNative.sol";
 
 contract RouterTest is Test {
     MockERC20 public token0;
@@ -622,9 +622,10 @@ contract MockRouterLogic is IRouterLogic {
         if (route.length >= 128) return abi.decode(route[64:], (uint256, uint256));
     }
 
-    function getFeeReceiver() external view returns (address) {}
+    function getProtocolFeeRecipient() external view returns (address) {}
+    function getProtocolFeeShare() external view returns (uint256) {}
+    function setProtocolFeeParameters(address, uint96) external {}
     function sweep(address, address, uint256) external {}
-    function setFeeReceiver(address) external {}
 
     function test() public pure {}
 }
