@@ -3,15 +3,15 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "../../src/libraries/PairInteraction.sol";
 import "../../src/RouterAdapter.sol";
-import "../interfaces/IUV2Pair.sol";
-import "../interfaces/IUV3Pair.sol";
+import "../../src/libraries/PairInteraction.sol";
+import "../interfaces/ILBPair.sol";
 import "../interfaces/ILegacyLBPair.sol";
 import "../interfaces/ILegacyLBRouter.sol";
-import "../interfaces/ILBPair.sol";
 import "../interfaces/ITMPair.sol";
 import "../interfaces/ITMPairV2.sol";
+import "../interfaces/IUV2Pair.sol";
+import "../interfaces/IUV3Pair.sol";
 
 contract PairInteractionTest is Test {
     error CustomError();
