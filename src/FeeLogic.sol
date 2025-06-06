@@ -80,7 +80,7 @@ abstract contract FeeLogic is IFeeLogic {
             _transferFee(token, from, feeRecipient, feeAmount - protocolFeeAmount);
             if (protocolFeeAmount > 0) _transferFee(token, from, _protocolFeeRecipient, protocolFeeAmount);
 
-            emit FeeSent(token, feeRecipient, feeAmount, protocolFeeAmount);
+            emit FeeSent(token, from, feeRecipient, feeAmount, protocolFeeAmount);
         }
     }
 
