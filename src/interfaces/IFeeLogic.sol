@@ -10,7 +10,13 @@ interface IFeeLogic {
     event ProtocolFeeParametersSet(
         address indexed sender, address indexed protocolFeeReceiver, uint96 protocolFeeShare
     );
-    event FeeSent(address indexed token, address indexed feeRecipient, uint256 feeAmount, uint256 protocolFeeAmount);
+    event FeeSent(
+        address indexed token,
+        address indexed from,
+        address indexed feeRecipient,
+        uint256 feeAmount,
+        uint256 protocolFeeAmount
+    );
 
     function getProtocolFeeRecipient() external view returns (address);
 
