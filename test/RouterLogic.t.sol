@@ -512,9 +512,10 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     function test_Fuzz_Revert_SwapWithFee(uint256 feePercent) public {
         uint256 badFeePercent = bound(feePercent, 1e4, type(uint16).max);
 
-        (bytes memory route, uint256 ptr) = _createRoutes(2, 2);
+        (bytes memory route, uint256 ptr) = _createRoutes(3, 2);
         ptr = _setIsTransferTaxToken(route, ptr, false);
         ptr = _setToken(route, ptr, address(token0));
+        ptr = _setToken(route, ptr, address(taxToken));
         ptr = _setToken(route, ptr, address(token1));
         _setRoute(route, ptr, address(token0), address(token1), address(0), 1, 1);
 
@@ -526,7 +527,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
-        _setRoute(route, ptr, address(token1), address(token0), address(0), 1, 0);
+        _setRoute(route, ptr, address(taxToken), address(token0), address(0), 1, 0);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);

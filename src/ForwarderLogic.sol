@@ -60,8 +60,8 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
      * - The caller must be the router.
      * - The third party router must be trusted.
      * - The data must be formatted using:
-     *   - if 0 fee, `abi.encodePacked(approval, router, uint16(0), routerData)`
-     *   - else, `abi.encodePacked(approval, router, uint16(feePercent), feeReceiver, routerData)`
+     *   - if 0 fee, `abi.encodePacked(approval, router, uint8(0), uint16(0), routerData)`
+     *   - else, `abi.encodePacked(approval, router, bool(isFeeTokenIn), uint16(feePercent), feeReceiver, routerData)`
      * - The fee amount must be less than or equal to the amountIn.
      * - The router data must use at most `amountIn - feeAmount` of tokenIn.
      */
@@ -79,25 +79,37 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
 
         address approval = address(uint160(bytes20(data[0:20])));
         address router = address(uint160(bytes20(data[20:40])));
-        uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
+        bool isFeeTokenIn = bytes1(data[40:41]) != 0;
+        uint256 feePercent = uint256(uint16(bytes2(data[41:43])));
         (address feeReceiver, bytes memory routerData) =
-            feePercent == 0 ? (address(0), data[42:]) : (address(uint160(bytes20(data[42:62]))), data[62:]);
+            feePercent == 0 ? (address(0), data[43:]) : (address(uint160(bytes20(data[43:63]))), data[63:]);
 
         RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
 
-        uint256 feeAmount = (amountIn * feePercent) / BPS;
-        _sendFee(tokenIn, address(this), feeReceiver, feeAmount);
+        uint256 amountInWithoutFee = amountIn;
+        if (isFeeTokenIn) {
+            uint256 feeAmount = (amountIn * feePercent) / BPS;
+            amountInWithoutFee -= feeAmount;
+            _sendFee(tokenIn, address(this), from, feeReceiver, feeAmount);
+        }
 
-        SafeERC20.forceApprove(IERC20(tokenIn), approval, amountIn - feeAmount);
+        SafeERC20.forceApprove(IERC20(tokenIn), approval, amountInWithoutFee);
 
         _call(router, routerData);
 
         SafeERC20.forceApprove(IERC20(tokenIn), approval, 0);
 
-        uint256 balance = TokenLib.balanceOf(tokenOut, address(this));
-        TokenLib.transfer(tokenOut, to, balance);
+        uint256 amountOut = TokenLib.balanceOf(tokenOut, address(this));
 
-        return (amountIn, balance);
+        if (!isFeeTokenIn) {
+            uint256 feeAmount = (amountOut * feePercent) / BPS;
+            amountOut -= feeAmount;
+            _sendFee(tokenOut, address(this), from, feeReceiver, feeAmount);
+        }
+
+        TokenLib.transfer(tokenOut, to, amountOut);
+
+        return (amountIn, amountOut);
     }
 
     /**
@@ -174,7 +186,7 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
         if (!_trustedRouter.contains(router)) revert ForwarderLogic__UntrustedRouter();
 
         uint256 successState;
-        assembly {
+        assembly ("memory-safe") {
             successState := call(gas(), router, 0, add(data, 32), mload(data), 0, 0)
 
             if iszero(successState) {

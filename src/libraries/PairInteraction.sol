@@ -290,7 +290,7 @@ library PairInteraction {
      * The hash is used to check that the callback contains the expected data.
      */
     function hashUV3(int256 amount0Delta, int256 amount1Delta, address token) internal pure returns (uint256 hash) {
-        assembly {
+        assembly ("memory-safe") {
             let ptr := mload(0x40)
 
             mstore(0, amount0Delta)
@@ -317,7 +317,7 @@ library PairInteraction {
         // data = [selector: 4][amount0: 32][amount1: 32][data_ptr: 32][data_length: 32][data_value: 32]
         if (data.length != 164) revert PairInteraction__InvalidReturnData();
 
-        assembly {
+        assembly ("memory-safe") {
             amount0Delta := calldataload(4)
             amount1Delta := calldataload(36)
             token := calldataload(132)
