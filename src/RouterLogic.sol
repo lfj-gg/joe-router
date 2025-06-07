@@ -61,10 +61,16 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
     ) external override returns (uint256, uint256) {
         (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
-        (address feeRecipient, uint256 feeAmount) = _getFee(route, feePtr, amountIn, true);
-        uint256 amountInWithoutFee = amountIn - feeAmount;
+        (address feeToken, address feeRecipient, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
 
-        _sendFee(tokenIn, from, feeRecipient, feeAmount);
+        uint256 amountInWithoutFee = amountIn;
+        if (feeToken == tokenIn) {
+            unchecked {
+                uint256 feeAmount = (amountIn * feePercent) / BPS;
+                amountInWithoutFee -= feeAmount;
+                _sendFee(feeToken, from, from, feeRecipient, feeAmount);
+            }
+        }
 
         uint256[] memory balances = new uint256[](nbTokens);
 
@@ -72,16 +78,26 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
         uint256 total = amountInWithoutFee;
 
         bytes32 value;
+        address recipient = feeToken == tokenOut ? address(this) : to;
         for (uint256 i; i < nbSwaps; i++) {
             (ptr, value) = PackedRoute.next(route, ptr);
 
             unchecked {
-                total += _swapExactInSingle(route, balances, from, to, value);
+                total += _swapExactInSingle(route, balances, from, recipient, value);
             }
         }
 
         uint256 amountOut = balances[nbTokens - 1];
         if (total != amountOut) revert RouterLogic__ExcessBalanceUnused();
+
+        if (feeToken == tokenOut) {
+            unchecked {
+                uint256 feeAmount = (amountOut * feePercent) / BPS;
+                amountOut -= feeAmount;
+                _sendFee(feeToken, address(this), from, feeRecipient, feeAmount);
+                TokenLib.transfer(tokenOut, to, amountOut);
+            }
+        }
 
         if (amountOut < amountOutMin) revert RouterLogic__InsufficientAmountOut(amountOut, amountOutMin);
 
@@ -119,20 +135,45 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
 
         if (PackedRoute.isTransferTax(route)) revert RouterLogic__TransferTaxNotSupported();
 
-        (uint256 amountIn, uint256[] memory amountsIn) = _getAmountsIn(route, amountOut, nbTokens, nbSwaps);
+        (address feeToken, address feeRecipient, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
 
-        (address feeRecipient, uint256 feeAmount) = _getFee(route, feePtr, amountIn, false);
-        uint256 amountInWithFee = amountIn + feeAmount;
+        address recipient;
+        uint256 amountOutWithFee = amountOut;
+        if (feeToken == tokenOut) {
+            recipient = address(this);
+            unchecked {
+                amountOutWithFee = amountOutWithFee * BPS / (BPS - feePercent);
+            }
+        } else {
+            recipient = to;
+        }
+
+        (uint256 amountInWithFee, uint256[] memory amountsIn) =
+            _getAmountsIn(route, amountOutWithFee, nbTokens, nbSwaps);
+
+        if (feeToken == tokenIn) {
+            unchecked {
+                uint256 feeAmount = amountInWithFee * feePercent / (BPS - feePercent);
+                amountInWithFee += feeAmount;
+                _sendFee(tokenIn, from, from, feeRecipient, feeAmount);
+            }
+        }
 
         if (amountInWithFee > amountInMax) revert RouterLogic__ExceedsMaxAmountIn(amountInWithFee, amountInMax);
-
-        _sendFee(tokenIn, from, feeRecipient, feeAmount);
 
         bytes32 value;
         for (uint256 i; i < nbSwaps; i++) {
             (ptr, value) = PackedRoute.next(route, ptr);
 
-            _swapExactOutSingle(route, nbTokens, from, to, value, amountsIn[i]);
+            _swapExactOutSingle(route, nbTokens, from, recipient, value, amountsIn[i]);
+        }
+
+        if (feeToken == tokenOut) {
+            unchecked {
+                uint256 feeAmount = amountOutWithFee - amountOut;
+                _sendFee(feeToken, address(this), from, feeRecipient, feeAmount);
+                TokenLib.transfer(tokenOut, to, amountOut);
+            }
         }
 
         return (amountInWithFee, amountOut);
@@ -219,22 +260,23 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * - The data must use the valid format: `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
      * - The feePercent must be greater than 0 and less than BPS.
      */
-    function _getFee(bytes calldata route, uint256 feePtr, uint256 amountIn, bool isSwapExactIn)
+    function _getFeePercent(bytes calldata route, uint256 feePtr, uint256 nbTokens)
         private
         pure
-        returns (address feeRecipient, uint256 feeAmount)
+        returns (address feeToken, address feeRecipient, uint256 feePercent)
     {
         if (feePtr > 0) {
             (, bytes32 value) = PackedRoute.next(route, feePtr);
 
-            (address recipient, uint256 feePercent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
+            (address recipient, uint256 percent, uint256 flags, uint256 feeTokenId, uint256 tokenOutId) =
                 PackedRoute.decode(value);
 
-            if ((flags | tokenInId | tokenOutId) != 0) revert RouterLogic__InvalidFeeData();
-            if (feePercent == 0 || feePercent >= BPS) revert RouterLogic__InvalidFeePercent();
+            if ((flags | tokenOutId) != 0 || (feeTokenId != 0 && feeTokenId != nbTokens - 1)) {
+                revert RouterLogic__InvalidFeeData();
+            }
+            if (percent == 0 || percent >= BPS) revert RouterLogic__InvalidFeePercent();
 
-            feeRecipient = recipient;
-            feeAmount = isSwapExactIn ? (amountIn * feePercent) / BPS : (amountIn * feePercent) / (BPS - feePercent);
+            return (PackedRoute.token(route, feeTokenId), recipient, percent);
         }
     }
 
@@ -381,6 +423,10 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * @dev Helper function to transfer the fee to the fee recipient.
      */
     function _transferFee(address token, address from, address to, uint256 amount) internal override {
-        RouterLib.transfer(_router, token, from, to, amount);
+        if (from == address(this)) {
+            TokenLib.transfer(token, to, amount);
+        } else {
+            RouterLib.transfer(_router, token, from, to, amount);
+        }
     }
 }

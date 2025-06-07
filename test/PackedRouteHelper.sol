@@ -75,12 +75,24 @@ abstract contract PackedRouteHelper {
         return _setRoute(b, ptr, tokenInId, tokenOutId, pair, percent, flags);
     }
 
-    function _setFeePercent(bytes memory b, uint256 ptr, address feeRecipient, uint16 feePercent)
+    function _setFeePercentIn(bytes memory b, uint256 ptr, address feeRecipient, uint16 feePercent)
         internal
         pure
         returns (uint256)
     {
         return _setRoute(b, ptr, 0, 0, feeRecipient, feePercent, 0);
+    }
+
+    function _setFeePercentOut(bytes memory b, uint256 ptr, address feeRecipient, uint16 feePercent)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 nbTokens;
+        assembly ("memory-safe") {
+            nbTokens := shr(248, mload(add(b, 32)))
+        }
+        return _setRoute(b, ptr, nbTokens - 1, 0, feeRecipient, feePercent, 0);
     }
 
     function _setRoute(

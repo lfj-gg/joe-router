@@ -68,19 +68,20 @@ abstract contract FeeLogic is IFeeLogic {
 
     /**
      * @dev Internal function to send the fee to the fee recipient.
+     * The user parameter is only used for event logging.
      *
      * Requirements:
      * - The fee amount must be greater than zero.
      */
-    function _sendFee(address token, address from, address feeRecipient, uint256 feeAmount) internal {
+    function _sendFee(address token, address payer, address user, address feeRecipient, uint256 feeAmount) internal {
         if (feeAmount > 0) {
             if (feeRecipient == address(0)) revert FeeLogic__InvalidFeeReceiver();
 
             uint256 protocolFeeAmount = (feeAmount * _protocolFeeShare) / BPS;
-            _transferFee(token, from, feeRecipient, feeAmount - protocolFeeAmount);
-            if (protocolFeeAmount > 0) _transferFee(token, from, _protocolFeeRecipient, protocolFeeAmount);
+            _transferFee(token, payer, feeRecipient, feeAmount - protocolFeeAmount);
+            if (protocolFeeAmount > 0) _transferFee(token, payer, _protocolFeeRecipient, protocolFeeAmount);
 
-            emit FeeSent(token, from, feeRecipient, feeAmount, protocolFeeAmount);
+            emit FeeSent(token, user, feeRecipient, feeAmount, protocolFeeAmount);
         }
     }
 
