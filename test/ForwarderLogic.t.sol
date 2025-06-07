@@ -96,6 +96,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         bytes memory data = abi.encodePacked(
             address(this),
             address(this),
+            uint8(1),
             uint16(0),
             abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
         );
@@ -103,7 +104,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.prank(from);
         IERC20(tokenIn).approve(address(this), amountIn);
 
-        forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, data);
+        forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, 0, from, to, data);
 
         assertEq(IERC20(tokenIn).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactIn::1");
         assertEq(IERC20(tokenIn).balanceOf(from), 0, "test_Fuzz_SwapExactIn::2");
@@ -116,7 +117,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactIn::8");
     }
 
-    function test_Fuzz_SwapExactInWithFee(
+    function test_Fuzz_SwapExactInWithFeeIn(
         bool zeroToOne,
         uint256 amountIn,
         uint256 feePercent,
@@ -150,12 +151,14 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             ? abi.encodePacked(
                 address(this),
                 address(this),
+                uint8(0),
                 uint16(0),
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
             )
             : abi.encodePacked(
                 address(this),
                 address(this),
+                uint8(1),
                 uint16(feePercent),
                 thirdPartyFeeReceiver,
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
@@ -164,26 +167,96 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.prank(from);
         IERC20(tokenIn).approve(address(this), amountIn);
 
-        (uint256 totalIn, uint256 totalOut) =
-            forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, amountOut, from, to, data);
+        (uint256 totalIn, uint256 totalOut) = forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, 0, from, to, data);
 
-        assertEq(IERC20(tokenIn).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFee::1");
-        assertEq(IERC20(tokenIn).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFee::2");
-        assertEq(IERC20(tokenIn).balanceOf(to), 0, "test_Fuzz_SwapExactInWithFee::3");
-        assertEq(IERC20(tokenIn).balanceOf(address(this)), amountIn - feeAmountIn, "test_Fuzz_SwapExactInWithFee::4");
+        assertEq(IERC20(tokenIn).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFeeIn::1");
+        assertEq(IERC20(tokenIn).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFeeIn::2");
+        assertEq(IERC20(tokenIn).balanceOf(to), 0, "test_Fuzz_SwapExactInWithFeeIn::3");
+        assertEq(IERC20(tokenIn).balanceOf(address(this)), amountIn - feeAmountIn, "test_Fuzz_SwapExactInWithFeeIn::4");
         assertEq(
             IERC20(tokenIn).balanceOf(thirdPartyFeeReceiver),
             feeAmountIn - protocolFeeAmountIn,
-            "test_Fuzz_SwapExactInWithFee::5"
+            "test_Fuzz_SwapExactInWithFeeIn::5"
         );
-        assertEq(IERC20(tokenIn).balanceOf(feeReceiver), protocolFeeAmountIn, "test_Fuzz_SwapExactInWithFee::6");
-        assertEq(totalIn, amountIn, "test_Fuzz_SwapExactInWithFee::7");
+        assertEq(IERC20(tokenIn).balanceOf(feeReceiver), protocolFeeAmountIn, "test_Fuzz_SwapExactInWithFeeIn::6");
+        assertEq(totalIn, amountIn, "test_Fuzz_SwapExactInWithFeeIn::7");
 
-        assertEq(IERC20(tokenOut).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFee::8");
-        assertEq(IERC20(tokenOut).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFee::9");
-        assertEq(IERC20(tokenOut).balanceOf(to), amountOut, "test_Fuzz_SwapExactInWithFee::10");
-        assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactInWithFee::11");
-        assertEq(totalOut, amountOut, "test_Fuzz_SwapExactInWithFee::12");
+        assertEq(IERC20(tokenOut).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFeeIn::8");
+        assertEq(IERC20(tokenOut).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFeeIn::9");
+        assertEq(IERC20(tokenOut).balanceOf(to), amountOut, "test_Fuzz_SwapExactInWithFeeIn::10");
+        assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactInWithFeeIn::11");
+        assertEq(totalOut, amountOut, "test_Fuzz_SwapExactInWithFeeIn::12");
+    }
+
+    function test_Fuzz_SwapExactInWithFeeOut(
+        bool zeroToOne,
+        uint256 amountIn,
+        uint256 feePercent,
+        uint256 amountOut,
+        address from,
+        address to
+    ) public {
+        if (
+            from == address(0) || from == address(this) || from == address(forwarderLogic) || from == feeReceiver
+                || from == thirdPartyFeeReceiver
+        ) {
+            from = address(1);
+        }
+        if (
+            to == from || to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
+                || to == thirdPartyFeeReceiver
+        ) {
+            to = address(2);
+        }
+        amountOut = bound(amountOut, 1, type(uint256).max / 10_000);
+        feePercent = bound(feePercent, 0, 10_000);
+
+        (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
+
+        MockERC20(tokenIn).mint(from, amountIn);
+
+        uint256 feeAmountOut = (amountOut * feePercent) / 10_000;
+        uint256 protocolFeeAmountOut = (feeAmountOut * 0.15e4) / 1e4;
+
+        bytes memory data = feePercent == 0
+            ? abi.encodePacked(
+                address(this),
+                address(this),
+                uint8(0),
+                uint16(0),
+                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
+            )
+            : abi.encodePacked(
+                address(this),
+                address(this),
+                uint8(0),
+                uint16(feePercent),
+                thirdPartyFeeReceiver,
+                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
+            );
+
+        vm.prank(from);
+        IERC20(tokenIn).approve(address(this), amountIn);
+
+        (uint256 totalIn, uint256 totalOut) = forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, 0, from, to, data);
+
+        assertEq(IERC20(tokenIn).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFeeOut::1");
+        assertEq(IERC20(tokenIn).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFeeOut::2");
+        assertEq(IERC20(tokenIn).balanceOf(to), 0, "test_Fuzz_SwapExactInWithFeeOut::3");
+        assertEq(IERC20(tokenIn).balanceOf(address(this)), amountIn, "test_Fuzz_SwapExactInWithFeeOut::4");
+        assertEq(totalIn, amountIn, "test_Fuzz_SwapExactInWithFeeOut::5");
+
+        assertEq(IERC20(tokenOut).balanceOf(address(forwarderLogic)), 0, "test_Fuzz_SwapExactInWithFeeOut::6");
+        assertEq(IERC20(tokenOut).balanceOf(from), 0, "test_Fuzz_SwapExactInWithFeeOut::7");
+        assertEq(IERC20(tokenOut).balanceOf(to), amountOut - feeAmountOut, "test_Fuzz_SwapExactInWithFeeOut::8");
+        assertEq(IERC20(tokenOut).balanceOf(address(this)), 0, "test_Fuzz_SwapExactInWithFeeOut::9");
+        assertEq(
+            IERC20(tokenOut).balanceOf(thirdPartyFeeReceiver),
+            feeAmountOut - protocolFeeAmountOut,
+            "test_Fuzz_SwapExactInWithFeeOut::10"
+        );
+        assertEq(IERC20(tokenOut).balanceOf(feeReceiver), protocolFeeAmountOut, "test_Fuzz_SwapExactInWithFeeOut::11");
+        assertEq(totalOut, amountOut - feeAmountOut, "test_Fuzz_SwapExactInWithFeeOut::12");
     }
 
     function test_Fuzz_Revert_SwapExactIn(address caller) public {
@@ -194,18 +267,41 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         forwarderLogic.swapExactIn(address(0), address(0), 0, 0, address(0), address(0), "");
 
         vm.expectRevert();
-        forwarderLogic.swapExactIn(token0, address(0), 0, 0, address(0), address(0), new bytes(55));
+        forwarderLogic.swapExactIn(token0, address(0), 0, 0, address(0), address(0), new bytes(42));
+
+        vm.expectRevert();
+        forwarderLogic.swapExactIn(
+            token0,
+            address(0),
+            0,
+            0,
+            address(0),
+            address(0),
+            abi.encodePacked(address(0), address(0), uint8(1), uint16(1), new bytes(19))
+        );
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__UntrustedRouter.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(1), address(1), uint16(0), "")
+            token0,
+            address(0),
+            0,
+            0,
+            address(1),
+            address(0),
+            abi.encodePacked(address(1), address(1), uint8(0), uint16(0), "")
         );
 
         forwarderLogic.updateTrustedRouter(address(0), true);
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__NoCode.selector);
         forwarderLogic.swapExactIn(
-            token0, address(0), 0, 0, address(1), address(0), abi.encodePacked(address(this), address(0), uint16(0), "")
+            token0,
+            address(0),
+            0,
+            0,
+            address(1),
+            address(0),
+            abi.encodePacked(address(this), address(0), uint8(0), uint16(0), "")
         );
 
         revertData = bytes("Error");
@@ -218,7 +314,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(1),
             address(0),
-            abi.encodePacked(address(this), address(this), uint16(0), "")
+            abi.encodePacked(address(this), address(this), uint8(0), uint16(0), "")
         );
     }
 
