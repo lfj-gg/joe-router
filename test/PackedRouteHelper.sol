@@ -92,7 +92,7 @@ abstract contract PackedRouteHelper {
         assembly ("memory-safe") {
             nbTokens := shr(248, mload(add(b, 32)))
         }
-        return _setRoute(b, ptr, nbTokens - 1, 0, feeRecipient, feePercent, 0);
+        return _setRoute(b, ptr, nbTokens - 1, nbTokens - 1, feeRecipient, feePercent, 0);
     }
 
     function _setRoute(

@@ -519,31 +519,43 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, address(token1));
         _setRoute(route, ptr, address(token0), address(token1), address(0), 1, 1);
 
+        // flags != 0
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         _setRoute(route, ptr, address(token0), address(token1), address(0), 1, 0);
 
+        // inId != outId
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
-        _setRoute(route, ptr, address(taxToken), address(token0), address(0), 1, 0);
+        _setRoute(route, ptr, address(token1), address(token0), address(0), 1, 0);
 
+        // inId != outId
+        vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
+        routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
+
+        _setRoute(route, ptr, address(taxToken), address(taxToken), address(0), 1, 0);
+
+        // inId != 0 || inId != n-1
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeeData.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         _setRoute(route, ptr, address(token0), address(token0), address(0), 0, 0);
 
+        // 0% fee
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeePercent.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         _setRoute(route, ptr, address(token0), address(token0), address(0), uint16(badFeePercent), 0);
 
+        // >100% fee
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidFeePercent.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
 
         _setRoute(route, ptr, address(token0), address(token0), address(0), uint16(5_000), 0);
 
+        // feeReceiver == address(0)
         vm.expectRevert(IFeeLogic.FeeLogic__InvalidFeeReceiver.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }

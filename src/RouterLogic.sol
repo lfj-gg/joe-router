@@ -257,7 +257,9 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      *   else, the fee is calculated as `(amountIn * BPS) / (BPS - feePercent)`
      *
      * Requirements:
-     * - The data must use the valid format: `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
+     * - The data must use the valid format:
+     *   - If the fee is in tokenIn, `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
+     *   - If the fee is in tokenOut, `(feeRecipient, feePercent, Flags.FEE_ID, nbTokens - 1, nbTokens - 1)`
      * - The feePercent must be greater than 0 and less than BPS.
      */
     function _getFeePercent(bytes calldata route, uint256 feePtr, uint256 nbTokens)
@@ -268,10 +270,10 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
         if (feePtr > 0) {
             (, bytes32 value) = PackedRoute.next(route, feePtr);
 
-            (address recipient, uint256 percent, uint256 flags, uint256 feeTokenId, uint256 tokenOutId) =
+            (address recipient, uint256 percent, uint256 flags, uint256 feeTokenId, uint256 feeTokenId_) =
                 PackedRoute.decode(value);
 
-            if ((flags | tokenOutId) != 0 || (feeTokenId != 0 && feeTokenId != nbTokens - 1)) {
+            if ((flags | (feeTokenId ^ feeTokenId_)) != 0 || (feeTokenId != 0 && feeTokenId != nbTokens - 1)) {
                 revert RouterLogic__InvalidFeeData();
             }
             if (percent == 0 || percent >= BPS) revert RouterLogic__InvalidFeePercent();
