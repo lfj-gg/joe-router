@@ -222,7 +222,7 @@ library PairInteraction {
      * - The call must succeed.
      * - The pair must have code.
      * - The return data must match the expected format, which is to revert with a
-     *   `RouterAdapter__UniswapV3SwapCallbackOnly(int256 amount0Delta, int256 amount1Delta)` error.
+     *   `UniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta)` error.
      */
     function getSwapInUV3(address pair, bool zeroForOne, uint256 amountOut) internal returns (uint256 amountIn) {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
