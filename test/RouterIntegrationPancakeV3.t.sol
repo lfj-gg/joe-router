@@ -25,7 +25,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
     address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
-        vm.createSelectFork("https://testnet-rpc.monad.xyz", 20362178);
+        vm.createSelectFork("https://testnet-rpc.monad.xyz");
 
         router = new Router(WMON, address(this));
         logic = new RouterLogic(address(router), address(0), feeReceiver, 0.15e4);
