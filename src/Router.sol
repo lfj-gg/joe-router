@@ -70,6 +70,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
     /**
      * @dev Swaps tokens from the sender to the recipient using the exact input amount. It will use the specified logic contract.
+     * WARNING: The route is not validated and could contain malicious data. The caller must ensure that the route is valid
+     * and does not lead to unexpected behavior.
      *
      * Emits a {SwapExactIn} event.
      *
@@ -103,6 +105,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
     /**
      * @dev Swaps tokens from the sender to the recipient using the exact output amount. It will use the specified logic contract.
+     * WARNING: The route is not validated and could contain malicious data. The caller must ensure that the route is valid
+     * and does not lead to unexpected behavior.
      *
      * Emits a {SwapExactOut} event.
      *

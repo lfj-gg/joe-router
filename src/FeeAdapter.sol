@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IFeeLogic} from "./interfaces/IFeeLogic.sol";
+import {IFeeAdapter} from "./interfaces/IFeeAdapter.sol";
 import {TokenLib} from "./libraries/TokenLib.sol";
 
 /**
- * @title FeeLogic
- * @notice This contract handles the fee logic for the router.
+ * @title FeeAdapter
+ * @notice This contract handles the fee sharing logic for the router.
  * It allows setting the protocol fee parameters and sending fees to the protocol fee recipient.
  * When sending fees, it splits the fee between the protocol fee recipient and the fee recipient
  * based on the protocol fee share. E.g. if the protocol fee share is 10% and the fee amount is 100,
  * then 10 will be sent to the protocol fee recipient and 90 will be sent to the fee recipient.
  */
-abstract contract FeeLogic is IFeeLogic {
+abstract contract FeeAdapter is IFeeAdapter {
     uint256 internal constant BPS = 10_000;
 
     address private _protocolFeeRecipient;
@@ -57,8 +57,8 @@ abstract contract FeeLogic is IFeeLogic {
      * - The fee share must be less than or equal to 10_000 (100%).
      */
     function _setProtocolFeeParameters(address protocolFeeReceiver, uint96 protocolFeeShare) internal {
-        if (protocolFeeReceiver == address(0)) revert FeeLogic__InvalidProtocolFeeReceiver();
-        if (protocolFeeShare > BPS) revert FeeLogic__InvalidProtocolFeeShare();
+        if (protocolFeeReceiver == address(0)) revert FeeAdapter__InvalidProtocolFeeReceiver();
+        if (protocolFeeShare > BPS) revert FeeAdapter__InvalidProtocolFeeShare();
 
         _protocolFeeRecipient = protocolFeeReceiver;
         _protocolFeeShare = protocolFeeShare;
@@ -71,17 +71,20 @@ abstract contract FeeLogic is IFeeLogic {
      * The user parameter is only used for event logging.
      *
      * Requirements:
+     * - The fee recipient address must not be zero.
      * - The fee amount must be greater than zero.
      */
-    function _sendFee(address token, address payer, address user, address feeRecipient, uint256 feeAmount) internal {
+    function _sendFee(address token, address payer, address allocatee, uint256 feeAmount) internal {
         if (feeAmount > 0) {
-            if (feeRecipient == address(0)) revert FeeLogic__InvalidFeeReceiver();
+            if (allocatee == address(0)) revert FeeAdapter__InvalidFeeReceiver();
 
             uint256 protocolFeeAmount = (feeAmount * _protocolFeeShare) / BPS;
-            _transferFee(token, payer, feeRecipient, feeAmount - protocolFeeAmount);
+            uint256 remainingFeeAmount = feeAmount - protocolFeeAmount;
+
+            if (remainingFeeAmount > 0) _transferFee(token, payer, allocatee, remainingFeeAmount);
             if (protocolFeeAmount > 0) _transferFee(token, payer, _protocolFeeRecipient, protocolFeeAmount);
 
-            emit FeeSent(token, user, feeRecipient, feeAmount, protocolFeeAmount);
+            emit FeeSent(token, allocatee, feeAmount, protocolFeeAmount);
         }
     }
 
@@ -92,7 +95,7 @@ abstract contract FeeLogic is IFeeLogic {
      * - The sender must be the contract itself.
      */
     function _transferFee(address token, address from, address to, uint256 amount) internal virtual {
-        if (from != address(this)) revert FeeLogic__InvalidFrom();
+        if (from != address(this)) revert FeeAdapter__InvalidFrom();
         TokenLib.transfer(token, to, amount);
     }
 

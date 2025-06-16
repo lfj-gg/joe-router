@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IFeeLogic} from "./IFeeLogic.sol";
+import {IFeeAdapter} from "./IFeeAdapter.sol";
 
-interface IRouterLogic is IFeeLogic {
+interface IRouterLogic is IFeeAdapter {
     error RouterLogic__OnlyRouter();
     error RouterLogic__InvalidTokenIn();
     error RouterLogic__InvalidTokenOut();

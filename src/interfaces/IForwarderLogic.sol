@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IFeeLogic} from "./IFeeLogic.sol";
+import {IFeeAdapter} from "./IFeeAdapter.sol";
 
-interface IForwarderLogic is IFeeLogic {
+interface IForwarderLogic is IFeeAdapter {
     error ForwarderLogic__InvalidRouter();
     error ForwarderLogic__NotImplemented();
     error ForwarderLogic__OnlyRouterOwner();
@@ -12,6 +12,7 @@ interface IForwarderLogic is IFeeLogic {
     error ForwarderLogic__RouterUpdateFailed();
     error ForwarderLogic__UntrustedRouter();
     error ForwarderLogic__Blacklisted();
+    error ForwarderLogic__UnspentAmountIn();
 
     event TrustedRouterUpdated(address indexed router, bool trusted);
     event BlacklistUpdated(address indexed account, bool blacklisted);
