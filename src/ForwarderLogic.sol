@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {FeeLogic} from "./FeeLogic.sol";
+import {FeeAdapter} from "./FeeAdapter.sol";
 import {IForwarderLogic} from "./interfaces/IForwarderLogic.sol";
 import {RouterLib} from "./libraries/RouterLib.sol";
 import {TokenLib} from "./libraries/TokenLib.sol";
@@ -15,7 +15,7 @@ import {TokenLib} from "./libraries/TokenLib.sol";
  * @notice Forwarder logic contract to call another router.
  * Note: this contract will not work with transfer tax tokens.
  */
-contract ForwarderLogic is FeeLogic, IForwarderLogic {
+contract ForwarderLogic is FeeAdapter, IForwarderLogic {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
@@ -25,7 +25,7 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
     mapping(address => bool) private _blacklist;
 
     constructor(address router, address protocolFeeReceiver, uint96 protocolFeeShare)
-        FeeLogic(protocolFeeReceiver, protocolFeeShare)
+        FeeAdapter(protocolFeeReceiver, protocolFeeShare)
     {
         if (router == address(0)) revert ForwarderLogic__InvalidRouter();
         _router = router;
@@ -60,8 +60,8 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
      * - The caller must be the router.
      * - The third party router must be trusted.
      * - The data must be formatted using:
-     *   - if 0 fee, `abi.encodePacked(approval, router, uint8(0), uint16(0), routerData)`
-     *   - else, `abi.encodePacked(approval, router, bool(isFeeTokenIn), uint16(feePercent), feeReceiver, routerData)`
+     *   - if 0 fee, `abi.encodePacked(approval, router, uint16(0), routerData)`
+     *   - else, `abi.encodePacked(approval, router, uint16(feePercent), bool(isFeeTokenIn), allocatee, routerData)`
      * - The fee amount must be less than or equal to the amountIn.
      * - The router data must use at most `amountIn - feeAmount` of tokenIn.
      */
@@ -79,32 +79,34 @@ contract ForwarderLogic is FeeLogic, IForwarderLogic {
 
         address approval = address(uint160(bytes20(data[0:20])));
         address router = address(uint160(bytes20(data[20:40])));
-        bool isFeeTokenIn = bytes1(data[40:41]) != 0;
-        uint256 feePercent = uint256(uint16(bytes2(data[41:43])));
-        (address feeReceiver, bytes memory routerData) =
-            feePercent == 0 ? (address(0), data[43:]) : (address(uint160(bytes20(data[43:63]))), data[63:]);
+        uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
+        (uint256 isFeeTokenIn, address allocatee, bytes memory routerData) = feePercent == 0
+            ? (0, address(0), data[42:])
+            : ((bytes1(data[42:43]) != 0 ? 1 : 2), address(uint160(bytes20(data[43:63]))), data[63:]);
 
         RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
 
         uint256 amountInWithoutFee = amountIn;
-        if (isFeeTokenIn) {
+        if (isFeeTokenIn == 1) {
             uint256 feeAmount = (amountIn * feePercent) / BPS;
             amountInWithoutFee -= feeAmount;
-            _sendFee(tokenIn, address(this), from, feeReceiver, feeAmount);
+            _sendFee(tokenIn, address(this), allocatee, feeAmount);
         }
 
         SafeERC20.forceApprove(IERC20(tokenIn), approval, amountInWithoutFee);
 
         _call(router, routerData);
 
-        SafeERC20.forceApprove(IERC20(tokenIn), approval, 0);
+        // Will always revert if amountIn is type(uint256).max, but it will never happen in practice.
+        uint256 allowance = IERC20(tokenIn).allowance(address(this), approval);
+        if (allowance != 0) revert ForwarderLogic__UnspentAmountIn();
 
         uint256 amountOut = TokenLib.balanceOf(tokenOut, address(this));
 
-        if (!isFeeTokenIn) {
+        if (isFeeTokenIn == 2) {
             uint256 feeAmount = (amountOut * feePercent) / BPS;
             amountOut -= feeAmount;
-            _sendFee(tokenOut, address(this), from, feeReceiver, feeAmount);
+            _sendFee(tokenOut, address(this), allocatee, feeAmount);
         }
 
         TokenLib.transfer(tokenOut, to, amountOut);

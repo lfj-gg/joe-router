@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "../src/RouterAdapter.sol";
 import "../src/RouterLogic.sol";
-import "../src/interfaces/IFeeLogic.sol";
+import "../src/interfaces/IFeeAdapter.sol";
 import "./PackedRouteHelper.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockTaxToken.sol";
@@ -90,10 +90,10 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     }
 
     function test_Constructor() public {
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeReceiver.selector);
         new RouterLogic(address(0), address(1), address(0), 0);
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeShare.selector);
         new RouterLogic(address(0), address(1), address(1), 10_001);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidRouter.selector);
@@ -498,10 +498,10 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         assertEq(routerLogic.getProtocolFeeRecipient(), feeReceiver, "test_Fuzz_SetFeeParameters::3");
         assertEq(routerLogic.getProtocolFeeShare(), 0, "test_Fuzz_SetFeeParameters::4");
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeReceiver.selector);
         routerLogic.setProtocolFeeParameters(address(0), uint96(validFeeShare));
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeShare.selector);
         routerLogic.setProtocolFeeParameters(newFeeReceiver, uint96(bound(feeShare, 10_001, type(uint96).max)));
 
         vm.expectRevert(IRouterLogic.RouterLogic__OnlyRouterOwner.selector);
@@ -556,7 +556,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         _setRoute(route, ptr, address(token0), address(token0), address(0), uint16(5_000), 0);
 
         // feeReceiver == address(0)
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidFeeReceiver.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidFeeReceiver.selector);
         routerLogic.swapExactIn(address(token0), address(token1), 1e18, 1e18, alice, bob, route);
     }
 }

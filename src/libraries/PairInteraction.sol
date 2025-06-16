@@ -236,8 +236,8 @@ library PairInteraction {
             }
             default {
                 switch zeroForOne
-                case 1 { amountIn := mload(add(ptr, 4)) }
-                default { amountIn := mload(add(ptr, 36)) }
+                case 0 { amountIn := mload(add(ptr, 36)) }
+                default { amountIn := mload(add(ptr, 4)) }
             }
         }
     }
@@ -270,13 +270,13 @@ library PairInteraction {
             expectedHash := keccak256(ptr, 96)
 
             switch zeroForOne
-            case 1 {
-                actualAmountIn := mload(ptr)
-                actualAmountOut := mload(add(ptr, 32))
-            }
-            default {
+            case 0 {
                 actualAmountOut := mload(ptr)
                 actualAmountIn := mload(add(ptr, 32))
+            }
+            default {
+                actualAmountIn := mload(ptr)
+                actualAmountOut := mload(add(ptr, 32))
             }
 
             actualAmountOut := sub(0, actualAmountOut) // Invert the sign
