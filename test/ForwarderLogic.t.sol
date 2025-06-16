@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "../src/ForwarderLogic.sol";
 import "../src/RouterAdapter.sol";
-import "../src/interfaces/IFeeLogic.sol";
+import "../src/interfaces/IFeeAdapter.sol";
 import "./PackedRouteHelper.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockTaxToken.sol";
@@ -23,6 +23,8 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
 
     bytes public revertData;
     bytes public returnData;
+
+    uint16 FEE_BIPS = 0.15e4; // 15%
 
     function owner() public view returns (address) {
         return address(this);
@@ -60,8 +62,8 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         MockERC20(tokenOut).mint(to, amountOut);
     }
 
-    function setUp() public {
-        forwarderLogic = new ForwarderLogic(address(this), feeReceiver, 0.15e4);
+    function setUp() public virtual {
+        forwarderLogic = new ForwarderLogic(address(this), feeReceiver, FEE_BIPS);
 
         forwarderLogic.updateTrustedRouter(address(this), true);
 
@@ -76,10 +78,10 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         vm.expectRevert(IForwarderLogic.ForwarderLogic__InvalidRouter.selector);
         new ForwarderLogic(address(0), feeReceiver, 0);
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeReceiver.selector);
         new ForwarderLogic(address(this), address(0), 0);
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeShare.selector);
         new ForwarderLogic(address(this), address(1), 10_001);
     }
 
@@ -87,7 +89,13 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         public
     {
         if (from == address(0) || from == address(this) || from == address(forwarderLogic)) from = address(1);
-        if (to == from || to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(2);
+        if (to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(2);
+        if (from == to) {
+            from = address(1);
+            to = address(2);
+        }
+
+        amountIn = bound(amountIn, 0, type(uint256).max - 1);
 
         (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
 
@@ -96,7 +104,6 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         bytes memory data = abi.encodePacked(
             address(this),
             address(this),
-            uint8(1),
             uint16(0),
             abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
         );
@@ -132,11 +139,16 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             from = address(1);
         }
         if (
-            to == from || to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
+            to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
                 || to == thirdPartyFeeReceiver
         ) {
             to = address(2);
         }
+        if (from == to) {
+            from = address(1);
+            to = address(2);
+        }
+
         amountIn = bound(amountIn, 1, type(uint256).max / 10_000);
         feePercent = bound(feePercent, 0, 10_000);
 
@@ -145,21 +157,20 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         MockERC20(tokenIn).mint(from, amountIn);
 
         uint256 feeAmountIn = (amountIn * feePercent) / 10_000;
-        uint256 protocolFeeAmountIn = (feeAmountIn * 0.15e4) / 1e4;
+        uint256 protocolFeeAmountIn = (feeAmountIn * FEE_BIPS) / 1e4;
 
         bytes memory data = feePercent == 0
             ? abi.encodePacked(
                 address(this),
                 address(this),
-                uint8(0),
                 uint16(0),
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
             )
             : abi.encodePacked(
                 address(this),
                 address(this),
-                uint8(1),
                 uint16(feePercent),
+                uint8(1),
                 thirdPartyFeeReceiver,
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
             );
@@ -203,11 +214,17 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             from = address(1);
         }
         if (
-            to == from || to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
+            to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
                 || to == thirdPartyFeeReceiver
         ) {
             to = address(2);
         }
+        if (from == to) {
+            from = address(1);
+            to = address(2);
+        }
+
+        amountIn = bound(amountIn, 0, type(uint256).max - 1);
         amountOut = bound(amountOut, 1, type(uint256).max / 10_000);
         feePercent = bound(feePercent, 0, 10_000);
 
@@ -216,21 +233,20 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         MockERC20(tokenIn).mint(from, amountIn);
 
         uint256 feeAmountOut = (amountOut * feePercent) / 10_000;
-        uint256 protocolFeeAmountOut = (feeAmountOut * 0.15e4) / 1e4;
+        uint256 protocolFeeAmountOut = (feeAmountOut * FEE_BIPS) / 1e4;
 
         bytes memory data = feePercent == 0
             ? abi.encodePacked(
                 address(this),
                 address(this),
-                uint8(0),
                 uint16(0),
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
             )
             : abi.encodePacked(
                 address(this),
                 address(this),
-                uint8(0),
                 uint16(feePercent),
+                uint8(0),
                 thirdPartyFeeReceiver,
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
             );
@@ -277,7 +293,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(0),
             address(0),
-            abi.encodePacked(address(0), address(0), uint8(1), uint16(1), new bytes(19))
+            abi.encodePacked(address(0), address(0), uint16(1), uint8(1), new bytes(19))
         );
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__UntrustedRouter.selector);
@@ -288,7 +304,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(1),
             address(0),
-            abi.encodePacked(address(1), address(1), uint8(0), uint16(0), "")
+            abi.encodePacked(address(1), address(1), uint16(0), uint8(0), "")
         );
 
         forwarderLogic.updateTrustedRouter(address(0), true);
@@ -301,7 +317,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(1),
             address(0),
-            abi.encodePacked(address(this), address(0), uint8(0), uint16(0), "")
+            abi.encodePacked(address(this), address(0), uint16(0), uint8(0), "")
         );
 
         revertData = bytes("Error");
@@ -314,7 +330,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             0,
             address(1),
             address(0),
-            abi.encodePacked(address(this), address(this), uint8(0), uint16(0), "")
+            abi.encodePacked(address(this), address(this), uint16(0), uint8(0), "")
         );
     }
 
@@ -409,14 +425,50 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         assertEq(forwarderLogic.getProtocolFeeRecipient(), feeReceiver, "test_Fuzz_SetFeeParameters::3");
         assertEq(forwarderLogic.getProtocolFeeShare(), 0, "test_Fuzz_SetFeeParameters::4");
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeReceiver.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeReceiver.selector);
         forwarderLogic.setProtocolFeeParameters(address(0), uint96(validFeeShare));
 
-        vm.expectRevert(IFeeLogic.FeeLogic__InvalidProtocolFeeShare.selector);
+        vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeShare.selector);
         forwarderLogic.setProtocolFeeParameters(newFeeReceiver, uint96(bound(feeShare, 10_001, type(uint96).max)));
 
         vm.expectRevert(IForwarderLogic.ForwarderLogic__OnlyRouterOwner.selector);
         vm.prank(alice);
         forwarderLogic.setProtocolFeeParameters(newFeeReceiver, uint96(validFeeShare));
+    }
+
+    function test_Revert_Fuzz_SwapExactIn_ExactInNotFullyConsumed(
+        bool zeroToOne,
+        uint256 usedIn,
+        uint256 amountIn,
+        uint256 amountOut,
+        address from,
+        address to
+    ) public {
+        if (from == address(0) || from == address(this) || from == address(forwarderLogic)) from = address(1);
+        if (to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(2);
+        if (from == to) {
+            from = address(1);
+            to = address(2);
+        }
+
+        amountIn = bound(amountIn, 1, type(uint256).max);
+        usedIn = bound(usedIn, 0, amountIn - 1);
+
+        (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
+
+        MockERC20(tokenIn).mint(from, amountIn);
+
+        bytes memory data = abi.encodePacked(
+            address(this),
+            address(this),
+            uint16(0),
+            abi.encodeCall(this.swap, (tokenIn, tokenOut, usedIn, amountOut, address(forwarderLogic)))
+        );
+
+        vm.prank(from);
+        IERC20(tokenIn).approve(address(this), amountIn);
+
+        vm.expectRevert(IForwarderLogic.ForwarderLogic__UnspentAmountIn.selector);
+        forwarderLogic.swapExactIn(tokenIn, tokenOut, amountIn, 0, from, to, data);
     }
 }

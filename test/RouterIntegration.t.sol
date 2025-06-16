@@ -44,11 +44,13 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
     address feeReceiver = makeAddr("FeeReceiver");
     address thirdPartyFeeReceiver = makeAddr("thirdPartyFeeReceiver");
 
-    function setUp() public {
+    uint16 FEE_BIPS = 0.15e4; // 15%
+
+    function setUp() public virtual {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 50448676);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), LB0_ROUTER, feeReceiver, 0.15e4);
+        logic = new RouterLogic(address(router), LB0_ROUTER, feeReceiver, FEE_BIPS);
 
         router.updateRouterLogic(address(logic), true);
 
@@ -213,7 +215,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = amountIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToTokenWithFee::4");
         assertGt(totalOut, 0, "test_SwapExactInTokenToTokenWithFee::5");
@@ -293,7 +295,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToTokenWithFee::4");
         assertGt(totalOut, 0, "test_SwapExactInTokenToTokenWithFee::5");
@@ -463,7 +465,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToTokenWithFee::4");
         assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToTokenWithFee::5");
@@ -553,7 +555,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToTokenWithFee::4");
         assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToTokenWithFee::5");
@@ -635,7 +637,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
 
         uint256 feeAmount = amountIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToTokenWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToTokenWithFee::2");
@@ -681,7 +683,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToTokenWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToTokenWithFee::2");
@@ -764,7 +766,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
 
         uint256 feeAmount = totalIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToTokenWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutNativeToTokenWithFee::2");
@@ -811,7 +813,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         );
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToTokenWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutNativeToTokenWithFee::2");
@@ -898,7 +900,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = amountIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNativeWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInTokenToNativeWithFee::2");
@@ -946,7 +948,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNativeWithFee::1");
         assertGt(totalOut, 0, "test_SwapExactInTokenToNativeWithFee::2");
@@ -1034,7 +1036,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalIn * 0.1e4 / 1e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNativeWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutTokenToNativeWithFee::2");
@@ -1083,7 +1085,7 @@ contract RouterIntegrationTest is Test, PackedRouteHelper {
         vm.stopPrank();
 
         uint256 feeAmount = totalOut * 0.1e4 / 0.9e4;
-        uint256 protocolFeeAmount = feeAmount * 0.15e4 / 1e4;
+        uint256 protocolFeeAmount = feeAmount * FEE_BIPS / 1e4;
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNativeWithFee::1");
         assertGe(totalOut, amountOut, "test_SwapExactOutTokenToNativeWithFee::2");

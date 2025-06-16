@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {FeeLogic} from "./FeeLogic.sol";
+import {FeeAdapter} from "./FeeAdapter.sol";
 import {RouterAdapter} from "./RouterAdapter.sol";
 import {IRouterLogic} from "./interfaces/IRouterLogic.sol";
 import {Flags} from "./libraries/Flags.sol";
@@ -16,7 +16,7 @@ import {TokenLib} from "./libraries/TokenLib.sol";
  * @notice Router logic contract for swapping tokens using a route.
  * The route must follow the PackedRoute format.
  */
-contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
+contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
     address private immutable _router;
 
     /**
@@ -24,11 +24,12 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      *
      * Requirements:
      * - The router address must be a contract with code.
-     * - The fee receiver address must not be the zero address.
+     * - The protocolFeeReceiver address must not be the zero address.
+     * - The protocolFeeShare must be less than or equal to 10_000 (100%).
      */
-    constructor(address router, address routerV2_0, address feeReceiver, uint96 feeShare)
+    constructor(address router, address routerV2_0, address protocolFeeReceiver, uint96 protocolFeeShare)
         RouterAdapter(routerV2_0)
-        FeeLogic(feeReceiver, feeShare)
+        FeeAdapter(protocolFeeReceiver, protocolFeeShare)
     {
         if (router.code.length == 0) revert RouterLogic__InvalidRouter();
         _router = router;
@@ -48,7 +49,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * - The entire balance of all tokens must have been swapped to the last token.
      * - The actual amountOut must be greater than or equal to the amountOutMin.
      * - If the route has a fee, it should be the first route and the data must use the valid format:
-     *   `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
+     *   `(allocatee, feePercent, Flags.FEE_ID, 0, 0)`
      */
     function swapExactIn(
         address tokenIn,
@@ -61,14 +62,14 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
     ) external override returns (uint256, uint256) {
         (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps) = _startAndVerify(route, tokenIn, tokenOut);
 
-        (address feeToken, address feeRecipient, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
+        (address feeToken, address allocatee, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
 
         uint256 amountInWithoutFee = amountIn;
         if (feeToken == tokenIn) {
             unchecked {
                 uint256 feeAmount = (amountIn * feePercent) / BPS;
                 amountInWithoutFee -= feeAmount;
-                _sendFee(feeToken, from, from, feeRecipient, feeAmount);
+                _sendFee(feeToken, from, allocatee, feeAmount);
             }
         }
 
@@ -94,7 +95,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
             unchecked {
                 uint256 feeAmount = (amountOut * feePercent) / BPS;
                 amountOut -= feeAmount;
-                _sendFee(feeToken, address(this), from, feeRecipient, feeAmount);
+                _sendFee(feeToken, address(this), allocatee, feeAmount);
                 TokenLib.transfer(tokenOut, to, amountOut);
             }
         }
@@ -135,7 +136,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
 
         if (PackedRoute.isTransferTax(route)) revert RouterLogic__TransferTaxNotSupported();
 
-        (address feeToken, address feeRecipient, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
+        (address feeToken, address allocatee, uint256 feePercent) = _getFeePercent(route, feePtr, nbTokens);
 
         address recipient;
         uint256 amountOutWithFee = amountOut;
@@ -155,7 +156,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
             unchecked {
                 uint256 feeAmount = amountInWithFee * feePercent / (BPS - feePercent);
                 amountInWithFee += feeAmount;
-                _sendFee(tokenIn, from, from, feeRecipient, feeAmount);
+                _sendFee(tokenIn, from, allocatee, feeAmount);
             }
         }
 
@@ -171,7 +172,7 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
         if (feeToken == tokenOut) {
             unchecked {
                 uint256 feeAmount = amountOutWithFee - amountOut;
-                _sendFee(feeToken, address(this), from, feeRecipient, feeAmount);
+                _sendFee(feeToken, address(this), allocatee, feeAmount);
                 TokenLib.transfer(tokenOut, to, amountOut);
             }
         }
@@ -254,18 +255,18 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
      * @dev Returns the fee amount added on the swap.
      * The fee is calculated as follows:
      * - if `isSwapExactIn`, the fee is calculated as `(amountIn * feePercent) / BPS`
-     *   else, the fee is calculated as `(amountIn * BPS) / (BPS - feePercent)`
+     *   else, the fee is calculated as `(amountIn * feePercent) / (BPS - feePercent)`
      *
      * Requirements:
      * - The data must use the valid format:
-     *   - If the fee is in tokenIn, `(feeRecipient, feePercent, Flags.FEE_ID, 0, 0)`
-     *   - If the fee is in tokenOut, `(feeRecipient, feePercent, Flags.FEE_ID, nbTokens - 1, nbTokens - 1)`
+     *   - If the fee is in tokenIn, `(allocatee, feePercent, Flags.FEE_ID, 0, 0)`
+     *   - If the fee is in tokenOut, `(allocatee, feePercent, Flags.FEE_ID, nbTokens - 1, nbTokens - 1)`
      * - The feePercent must be greater than 0 and less than BPS.
      */
     function _getFeePercent(bytes calldata route, uint256 feePtr, uint256 nbTokens)
         private
         pure
-        returns (address feeToken, address feeRecipient, uint256 feePercent)
+        returns (address feeToken, address allocatee, uint256 feePercent)
     {
         if (feePtr > 0) {
             (, bytes32 value) = PackedRoute.next(route, feePtr);
@@ -422,7 +423,9 @@ contract RouterLogic is FeeLogic, RouterAdapter, IRouterLogic {
     }
 
     /**
-     * @dev Helper function to transfer the fee to the fee recipient.
+     * @dev Helper function to transfer the fee.
+     * If from is this contract, it will transfer the fee to the recipient directly.
+     * Else, it will transfer the fee from the router to the recipient.
      */
     function _transferFee(address token, address from, address to, uint256 amount) internal override {
         if (from == address(this)) {
