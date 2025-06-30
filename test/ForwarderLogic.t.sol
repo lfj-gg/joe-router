@@ -159,21 +159,15 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         uint256 feeAmountIn = (amountIn * feePercent) / 10_000;
         uint256 protocolFeeAmountIn = (feeAmountIn * FEE_BIPS) / 1e4;
 
-        bytes memory data = feePercent == 0
-            ? abi.encodePacked(
-                address(this),
-                address(this),
-                uint16(0),
-                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
-            )
-            : abi.encodePacked(
-                address(this),
-                address(this),
-                uint16(feePercent),
-                uint8(1),
-                thirdPartyFeeReceiver,
-                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic)))
+        bytes memory data;
+        {
+            bytes memory call = abi.encodeCall(
+                this.swap, (tokenIn, tokenOut, amountIn - feeAmountIn, amountOut, address(forwarderLogic))
             );
+            data = feePercent == 0
+                ? abi.encodePacked(address(this), address(this), uint16(0), call)
+                : abi.encodePacked(address(this), address(this), uint16(feePercent), uint8(1), thirdPartyFeeReceiver, call);
+        }
 
         vm.prank(from);
         IERC20(tokenIn).approve(address(this), amountIn);
@@ -235,21 +229,14 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         uint256 feeAmountOut = (amountOut * feePercent) / 10_000;
         uint256 protocolFeeAmountOut = (feeAmountOut * FEE_BIPS) / 1e4;
 
-        bytes memory data = feePercent == 0
-            ? abi.encodePacked(
-                address(this),
-                address(this),
-                uint16(0),
-                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
-            )
-            : abi.encodePacked(
-                address(this),
-                address(this),
-                uint16(feePercent),
-                uint8(0),
-                thirdPartyFeeReceiver,
-                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)))
-            );
+        bytes memory data;
+        {
+            bytes memory call =
+                abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)));
+            data = feePercent == 0
+                ? abi.encodePacked(address(this), address(this), uint16(0), call)
+                : abi.encodePacked(address(this), address(this), uint16(feePercent), uint8(0), thirdPartyFeeReceiver, call);
+        }
 
         vm.prank(from);
         IERC20(tokenIn).approve(address(this), amountIn);
