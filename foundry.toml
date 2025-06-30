@@ -2,10 +2,9 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-solc-version = "0.8.20"
+solc-version = "0.8.26"
 evm_version = "paris"
-via_ir = true
-optimizer_runs = 100000
+optimizer_runs = 1000000
 
 [fmt]
 sort_imports = true

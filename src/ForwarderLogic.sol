@@ -77,39 +77,45 @@ contract ForwarderLogic is FeeAdapter, IForwarderLogic {
         if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
         if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
-        address approval = address(uint160(bytes20(data[0:20])));
-        address router = address(uint160(bytes20(data[20:40])));
+        RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
+
         uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
         (uint256 isFeeTokenIn, address allocatee, bytes memory routerData) = feePercent == 0
             ? (0, address(0), data[42:])
             : ((bytes1(data[42:43]) != 0 ? 1 : 2), address(uint160(bytes20(data[43:63]))), data[63:]);
 
-        RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
+        address tokenIn_ = tokenIn;
+        address tokenOut_ = tokenOut;
 
         uint256 amountInWithoutFee = amountIn;
         if (isFeeTokenIn == 1) {
-            uint256 feeAmount = (amountIn * feePercent) / BPS;
+            uint256 feeAmount = (amountInWithoutFee * feePercent) / BPS;
             amountInWithoutFee -= feeAmount;
-            _sendFee(tokenIn, address(this), allocatee, feeAmount);
+            _sendFee(tokenIn_, address(this), allocatee, feeAmount);
         }
 
-        SafeERC20.forceApprove(IERC20(tokenIn), approval, amountInWithoutFee);
+        {
+            address approval = address(uint160(bytes20(data[0:20])));
+            address router = address(uint160(bytes20(data[20:40])));
 
-        _call(router, routerData);
+            SafeERC20.forceApprove(IERC20(tokenIn_), approval, amountInWithoutFee);
 
-        // Will always revert if amountIn is type(uint256).max, but it will never happen in practice.
-        uint256 allowance = IERC20(tokenIn).allowance(address(this), approval);
-        if (allowance != 0) revert ForwarderLogic__UnspentAmountIn();
+            _call(router, routerData);
 
-        uint256 amountOut = TokenLib.balanceOf(tokenOut, address(this));
+            // Will always revert if amountIn is type(uint256).max, but it will never happen in practice.
+            uint256 allowance = IERC20(tokenIn_).allowance(address(this), approval);
+            if (allowance != 0) revert ForwarderLogic__UnspentAmountIn();
+        }
+
+        uint256 amountOut = TokenLib.balanceOf(tokenOut_, address(this));
 
         if (isFeeTokenIn == 2) {
             uint256 feeAmount = (amountOut * feePercent) / BPS;
             amountOut -= feeAmount;
-            _sendFee(tokenOut, address(this), allocatee, feeAmount);
+            _sendFee(tokenOut_, address(this), allocatee, feeAmount);
         }
 
-        TokenLib.transfer(tokenOut, to, amountOut);
+        TokenLib.transfer(tokenOut_, to, amountOut);
 
         return (amountIn, amountOut);
     }
