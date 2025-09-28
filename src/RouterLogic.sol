@@ -284,9 +284,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
             if (
                 (PackedRoute.flags(value) | (feeTokenId ^ PackedRoute.tokenOutId(value))) != 0
                     || (feeTokenId != 0 && feeTokenId != nbTokens - 1)
-            ) {
-                revert RouterLogic__InvalidFeeData();
-            }
+            ) revert RouterLogic__InvalidFeeData();
             if (feePercent == 0 || feePercent >= BPS) revert RouterLogic__InvalidFeePercent();
         }
     }
@@ -504,10 +502,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
      * Else, it will transfer the fee from the router to the recipient.
      */
     function _transferFee(address token, address from, address to, uint256 amount) internal override {
-        if (from == address(this)) {
-            TokenLib.transfer(token, to, amount);
-        } else {
-            RouterLib.transfer(ROUTER, token, from, to, amount);
-        }
+        if (from == address(this)) TokenLib.transfer(token, to, amount);
+        else RouterLib.transfer(ROUTER, token, from, to, amount);
     }
 }
