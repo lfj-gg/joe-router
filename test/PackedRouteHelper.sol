@@ -11,14 +11,14 @@ abstract contract PackedRouteHelper {
     uint16 public constant TJ1_ID = uint16(Flags.UNISWAP_V2_ID);
     uint16 public constant LB0_ID = uint16(Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID);
     uint16 public constant LB12_ID = uint16(Flags.LFJ_LIQUIDITY_BOOK_ID);
-    uint16 public constant UV3_ID = uint16(Flags.UNISWAP_V3_ID);
+    uint16 public constant UV3ID = uint16(Flags.UNISWAP_V3_ID);
     uint16 public constant TM_ID = uint16(Flags.LFJ_TOKEN_MILL_ID);
     uint16 public constant TMV2_ID = uint16(Flags.LFJ_TOKEN_MILL_V2_ID);
-    uint16 public constant UV4_ID = uint16(Flags.UNISWAP_V4_ID);
+    uint16 public constant UV4ID = uint16(Flags.UNISWAP_V4_ID);
     uint16 public constant UNISWAP_V4_EXTRA_DATA_SIZE = 30; // [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3]
-    uint8 public constant UV4_NATIVE_FLAG_NONE = 0;
-    uint8 public constant UV4_NATIVE_FLAG_IN = 1;
-    uint8 public constant UV4_NATIVE_FLAG_OUT = 2;
+    uint8 public constant UV4NATIVE_FLAG_NONE = 0;
+    uint8 public constant UV4NATIVE_FLAG_IN = 1;
+    uint8 public constant UV4NATIVE_FLAG_OUT = 2;
 
     mapping(address => uint256) public _tokenToId;
 
@@ -94,7 +94,7 @@ abstract contract PackedRouteHelper {
         return _setRoute(b, ptr, tokenInId, tokenOutId, pair, percent, flags);
     }
 
-    struct ExtraDataUV4 {
+    struct ExtraDataUniswapV4 {
         uint24 fee;
         int24 tickSpacing;
         uint8 nativeFlag;
@@ -110,14 +110,14 @@ abstract contract PackedRouteHelper {
         address tokenOut,
         uint16 percent,
         uint16 flags,
-        ExtraDataUV4 memory extraData
+        ExtraDataUniswapV4 memory extraData
     ) internal view returns (uint256, uint256) {
         uint256 tokenInId = _tokenToId[tokenIn] - 1;
         uint256 tokenOutId = _tokenToId[tokenOut] - 1;
 
         ptr = _setRoute(b, ptr, tokenInId, tokenOutId, address(uint160(extraDataPtr)), percent, flags);
 
-        extraDataPtr = _setExtraDataUV4(
+        extraDataPtr = _setExtraDataUniswapV4(
             b,
             extraDataPtr,
             extraData.fee,
@@ -174,7 +174,7 @@ abstract contract PackedRouteHelper {
     }
 
     // [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable]
-    function _setExtraDataUV4(
+    function _setExtraDataUniswapV4(
         bytes memory b,
         uint256 ptr,
         uint24 fee,

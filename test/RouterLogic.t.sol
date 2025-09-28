@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../src/RouterAdapter.sol";
-import "../src/RouterLogic.sol";
-import "../src/interfaces/IFeeAdapter.sol";
-import "./PackedRouteHelper.sol";
-import "./mocks/MockERC20.sol";
-import "./mocks/MockTaxToken.sol";
+import {RouterAdapter} from "../src/RouterAdapter.sol";
+import {IRouterLogic, RouterLogic} from "../src/RouterLogic.sol";
+import {IFeeAdapter} from "../src/interfaces/IFeeAdapter.sol";
+import {TokenLib} from "../src/libraries/TokenLib.sol";
+import {PackedRoute, PackedRouteHelper} from "./PackedRouteHelper.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockTaxToken} from "./mocks/MockTaxToken.sol";
 
 contract RouterLogicTest is Test, PackedRouteHelper {
     RouterLogic public routerLogic;
@@ -60,7 +61,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         }
 
         if (token != address(0)) {
-            MockERC20(token).transfer(to, amount);
+            TokenLib.transfer(token, to, amount);
         } else {
             data = returnData;
 
@@ -363,7 +364,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     event Log(uint256 val0, uint256 val1, uint256 val2, uint256 val3);
 
     function test_Fuzz_Revert_InvalidId(uint16 id) public {
-        uint16 invalidId = uint16(bound(id, (UV4_ID >> 8) + 1, type(uint8).max) << 8);
+        uint16 invalidId = uint16(bound(id, (UV4ID >> 8) + 1, type(uint8).max) << 8);
 
         (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
@@ -417,7 +418,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, address(token0));
         ptr = _setToken(route, ptr, address(token1));
 
-        _setRoute(route, ptr, address(token0), address(token1), address(this), 1e4, ZERO_FOR_ONE | UV3_ID);
+        _setRoute(route, ptr, address(token0), address(token1), address(this), 1e4, ZERO_FOR_ONE | UV3ID);
 
         returnData = abi.encode(1e18, 1e18);
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../../src/interfaces/IRouterLogic.sol";
-import "../../src/libraries/RouterLib.sol";
-import "../mocks/MockERC20.sol";
+import {IRouterLogic} from "../../src/interfaces/IRouterLogic.sol";
+import {RouterLib} from "../../src/libraries/RouterLib.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
 
 contract RouterLibTest is Test {
     error CustomError();

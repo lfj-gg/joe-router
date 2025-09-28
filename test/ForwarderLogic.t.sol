@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../src/ForwarderLogic.sol";
-import "../src/RouterAdapter.sol";
-import "../src/interfaces/IFeeAdapter.sol";
-import "./PackedRouteHelper.sol";
-import "./mocks/MockERC20.sol";
-import "./mocks/MockTaxToken.sol";
+import {ForwarderLogic, IForwarderLogic} from "../src/ForwarderLogic.sol";
+import {IFeeAdapter} from "../src/interfaces/IFeeAdapter.sol";
+import {TokenLib} from "../src/libraries/TokenLib.sol";
+import {PackedRouteHelper} from "./PackedRouteHelper.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
 
 contract ForwarderLogicTest is Test, PackedRouteHelper {
     ForwarderLogic public forwarderLogic;
@@ -46,7 +46,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         }
 
         if (token != address(0)) {
-            IERC20(token).transferFrom(from, to, amount);
+            TokenLib.transferFrom(token, from, to, amount);
         } else {
             bytes memory data = revertData;
             if (data.length > 0) {
@@ -58,7 +58,7 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
     }
 
     function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, address to) public {
-        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        TokenLib.transferFrom(tokenIn, msg.sender, address(this), amountIn);
         MockERC20(tokenOut).mint(to, amountOut);
     }
 

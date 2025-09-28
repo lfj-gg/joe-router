@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../../src/libraries/TokenLib.sol";
-import "../mocks/MockERC20.sol";
-import "../mocks/WNative.sol";
+import {TokenLib} from "../../src/libraries/TokenLib.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {WNative} from "../mocks/WNative.sol";
 
 contract TokenLibTest is Test {
     error CustomError();

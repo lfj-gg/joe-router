@@ -20,9 +20,9 @@ abstract contract RouterAdapter {
     error RouterAdapter__UnexpectedAmountIn();
     error RouterAdapter__OnlyWnative();
 
-    address private immutable _routerV2_0;
-    address private immutable _uniswapV4;
-    address private immutable _wnative;
+    address private immutable ROUTER_V2_0;
+    address private immutable UNISWAP_V4_MANAGER;
+    address private immutable WNATIVE;
 
     uint256 private _callbackData = 0xdead;
 
@@ -30,9 +30,9 @@ abstract contract RouterAdapter {
      * @dev Constructor for the RouterAdapter contract.
      */
     constructor(address routerV2_0, address uniswapV4Manager, address wnative) {
-        _routerV2_0 = routerV2_0;
-        _wnative = wnative;
-        _uniswapV4 = uniswapV4Manager;
+        ROUTER_V2_0 = routerV2_0;
+        WNATIVE = wnative;
+        UNISWAP_V4_MANAGER = uniswapV4Manager;
     }
 
     /**
@@ -40,7 +40,7 @@ abstract contract RouterAdapter {
      * token contract itself, then it just accepts the native tokens.
      */
     receive() external payable {
-        if (msg.sender != _wnative) TokenLib.wrap(_wnative, msg.value);
+        if (msg.sender != WNATIVE) TokenLib.wrap(WNATIVE, msg.value);
     }
 
     /**
@@ -58,7 +58,7 @@ abstract contract RouterAdapter {
         if (id == Flags.UNISWAP_V3_ID) {
             if (msg.sender == account) return _uniswapV3SwapCallback(data);
         } else if (id == Flags.UNISWAP_V4_ID) {
-            if (msg.sender == _uniswapV4) return _uniswapV4UnlockCallback(data, account);
+            if (msg.sender == UNISWAP_V4_MANAGER) return UNISWAP_V4_MANAGERUnlockCallback(data, account);
         }
 
         assembly ("memory-safe") {
@@ -171,7 +171,7 @@ abstract contract RouterAdapter {
         view
         returns (uint256 amountIn)
     {
-        return PairInteraction.getSwapInLegacyLB(_routerV2_0, pair, amountOut, Flags.zeroForOne(flags));
+        return PairInteraction.getSwapInLegacyLB(ROUTER_V2_0, pair, amountOut, Flags.zeroForOne(flags));
     }
 
     /**
@@ -297,7 +297,7 @@ abstract contract RouterAdapter {
         _callbackData = Flags.UNISWAP_V4_ID;
 
         // Use pair as the dataOffset
-        return PairInteraction.getSwapInUV4(route, value, _uniswapV4, pair, Flags.zeroForOne(flags), amountOut);
+        return PairInteraction.getSwapInUV4(route, value, UNISWAP_V4_MANAGER, pair, Flags.zeroForOne(flags), amountOut);
     }
 
     function _swapUV4(
@@ -311,7 +311,7 @@ abstract contract RouterAdapter {
         _callbackData = (uint256(uint160(recipient)) << 96) | Flags.UNISWAP_V4_ID;
 
         (uint256 amountOut, uint256 actualAmountIn) =
-            PairInteraction.swapUV4(route, value, _uniswapV4, pair, Flags.zeroForOne(flags), amountIn);
+            PairInteraction.swapUV4(route, value, UNISWAP_V4_MANAGER, pair, Flags.zeroForOne(flags), amountIn);
 
         _callbackData = 0xdead;
 
@@ -326,8 +326,8 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The caller must be the callback address.
      */
-    function _uniswapV4UnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
-        (int256 delta0, int256 delta1) = PairInteraction.swapUV4Callback(data, recipient, _wnative);
+    function UNISWAP_V4_MANAGERUnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
+        (int256 delta0, int256 delta1) = PairInteraction.swapUV4Callback(data, recipient, WNATIVE);
         return abi.encode(0x20, 0x40, delta0, delta1);
     }
 }

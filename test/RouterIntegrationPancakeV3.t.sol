@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../src/Router.sol";
-import "../src/RouterLogic.sol";
-import "./PackedRouteHelper.sol";
-import "./mocks/MockERC20.sol";
+import {IRouter, Router} from "../src/Router.sol";
+import {RouterLogic} from "../src/RouterLogic.sol";
+import {PackedRouteHelper} from "./PackedRouteHelper.sol";
 
 /// forge-config: default.evm_version = "shanghai"
 contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
@@ -55,7 +55,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
 
         ptr = _setRoute(route, ptr, WETH, WMON, PSV2_MON_WETH, 1e4, TJ1_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1e4, UV3_ID | ZERO_FOR_ONE | CALLBACK);
+        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1e4, UV3ID | ZERO_FOR_ONE | CALLBACK);
 
         vm.startPrank(alice);
         IERC20(WETH).approve(address(router), amountIn);
@@ -67,11 +67,12 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector, logic, WETH, USDC, amountIn, 1, alice, true, multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 
@@ -112,7 +113,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, WMON);
         ptr = _setToken(route, ptr, WETH);
 
-        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3_ID | ONE_FOR_ZERO | CALLBACK);
+        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3ID | ONE_FOR_ZERO | CALLBACK);
         ptr = _setRoute(route, ptr, WMON, WETH, PSV2_MON_WETH, 1.0e4, TJ1_ID | ZERO_FOR_ONE);
 
         vm.startPrank(alice);
@@ -125,7 +126,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector,
                     logic,
@@ -138,6 +139,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
                     multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 
@@ -176,7 +178,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, WMON);
         ptr = _setToken(route, ptr, USDC);
 
-        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1.0e4, UV3_ID | ZERO_FOR_ONE | CALLBACK);
+        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1.0e4, UV3ID | ZERO_FOR_ONE | CALLBACK);
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: amountIn + 0.2e18}(
@@ -201,7 +203,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, WMON);
         ptr = _setToken(route, ptr, USDC);
 
-        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1.0e4, UV3_ID | ZERO_FOR_ONE | CALLBACK);
+        ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1.0e4, UV3ID | ZERO_FOR_ONE | CALLBACK);
 
         vm.prank(alice);
         (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
@@ -226,7 +228,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, WMON);
 
-        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3_ID | ONE_FOR_ZERO | CALLBACK);
+        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3ID | ONE_FOR_ZERO | CALLBACK);
 
         vm.startPrank(alice);
         IERC20(USDC).approve(address(router), amountIn);
@@ -255,7 +257,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, USDC);
         ptr = _setToken(route, ptr, WMON);
 
-        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3_ID | ONE_FOR_ZERO | CALLBACK);
+        ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3ID | ONE_FOR_ZERO | CALLBACK);
 
         vm.startPrank(alice);
         IERC20(USDC).approve(address(router), maxAmountIn);

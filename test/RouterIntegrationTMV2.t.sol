@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {StdChains, Test} from "forge-std/Test.sol";
 
-import "../src/Router.sol";
-import "../src/RouterLogic.sol";
-import "./PackedRouteHelper.sol";
-import "./interfaces/ITMPairV2.sol";
-import "./mocks/MockERC20.sol";
+import {IRouter, Router} from "../src/Router.sol";
+import {RouterAdapter, RouterLogic} from "../src/RouterLogic.sol";
+import {PackedRouteHelper} from "./PackedRouteHelper.sol";
+import {ITMPairV2} from "./interfaces/ITMPairV2.sol";
 
 contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
     Router public router;
@@ -72,11 +72,12 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector, logic, USDC, TEST, amountIn, 1, alice, true, multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 
@@ -130,7 +131,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector,
                     logic,
@@ -143,6 +144,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
                     multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 
