@@ -31,15 +31,15 @@ jobs:
 
       - name: Run Forge fmt
         run: |
-          forge fmt --check
+          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge fmt --check
         id: fmt
 
       - name: Run Forge build
         run: |
-          forge build --sizes
+          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge build --sizes
         id: build
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge test -vvv
         id: test
