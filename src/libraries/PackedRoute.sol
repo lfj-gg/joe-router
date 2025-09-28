@@ -8,6 +8,7 @@ pragma solidity ^0.8.20;
  * [nb tokens]
  * [isTransferTax, token0, token1, token2, ..., tokenN-1, tokenN]
  * [{pairAB, percentAB, flagsAB, tokenA_id, tokenB_id}, {pairBC, percentBC, flagsBC, tokenB_id, tokenC_id}, ...]
+ * [extraData][extraDataLength] (optional)
  *
  * The number of tokens is encoded on the first byte, it must be less or equal to 255.
  * The isTransferTax is a boolean flag that indicates if the token0 is a transfer tax token.
@@ -21,7 +22,13 @@ pragma solidity ^0.8.20;
  *     Flags library for more information.
  * The token ids are encoded as 8 bits unsigned integer. They must match the id of the token in the token list.
  * All the values are packed in a bytes array each time using the least amount of bytes possible (in solidity, use abi.encodePacked).
- *
+ * The extraData is an optional field that can be used to store additional data for the route. It must be at the end of
+ *     the route and **MUST** have an even length (multiple of 2 bytes). This is to avoid the extra data to be taken as a route.
+ * Currently, only Uniswap V4 requires extra data for its swaps, they must be encoded as follows:
+ *     [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable]
+ *     The hookData length **MUST** be even (multiple of 2 bytes).
+ * The extraDataLength is a 3 bytes unsigned integer that indicates the length of the extra data. It is appended at the end of the route.
+ *     It is used to know where the extra data starts and ends. If there is no extra data, this field should be omitted.
  * Example 1, swapExactIn:
  * User wants to swap X WETH to USDT using the following route:
  *
@@ -171,11 +178,14 @@ pragma solidity ^0.8.20;
  */
 library PackedRoute {
     error PackedRoute__InvalidLength();
+    error PackedRoute__InvalidExtraDataLength();
 
     uint256 internal constant IS_TRANSFER_TAX_OFFSET = 1;
     uint256 internal constant TOKENS_OFFSET = 2;
     uint256 internal constant ROUTE_SIZE = 26;
     uint256 internal constant ADDRESS_SIZE = 20;
+    uint256 internal constant EXTRA_DATA_LENGTH_SIZE = 3; // Up to 16777215 bytes of extra data. Extra data must be at the end of the route and have an even length.
+    uint256 internal constant EXTRA_DATA_LENGTH_SHIFT = 232; // 256 - EXTRA_DATA_LENGTH_SIZE * 8
 
     uint256 internal constant IS_TRANSFER_TAX_SHIFT = 248;
     uint256 internal constant ADDRESS_SHIFT = 96;
@@ -219,13 +229,29 @@ library PackedRoute {
         }
 
         unchecked {
-            uint256 length = route.length;
-
             ptr = TOKENS_OFFSET + nbTokens * ADDRESS_SIZE;
-            uint256 swapLength = length - ptr;
+            uint256 swapLength = route.length - ptr;
+            if (route.length < ptr) revert PackedRoute__InvalidLength();
+
+            if (swapLength % ROUTE_SIZE != 0) {
+                // Might overflow if swapLength < 3, but `type(uint256).max - {0, 1, 2}` is never multiple of ROUTE_SIZE
+                // so it will be caught by the modulo check.
+                swapLength -= extraDataLength(route, swapLength) + EXTRA_DATA_LENGTH_SIZE;
+                if (swapLength % ROUTE_SIZE != 0) revert PackedRoute__InvalidLength();
+            }
 
             nbSwaps = swapLength / ROUTE_SIZE;
-            if (length < ptr || swapLength % ROUTE_SIZE != 0) revert PackedRoute__InvalidLength();
+        }
+    }
+
+    /**
+     * @dev Returns the end pointer of the swaps section of the route.
+     * If the route is not of the correct length, the function will revert with `PackedRoute__InvalidLength`.
+     * Always use `start` to validate the route length before calling this function.
+     */
+    function endPtr(uint256 startPtr, uint256 nbSwaps) internal pure returns (uint256 endPtr_) {
+        unchecked {
+            endPtr_ = startPtr + nbSwaps * ROUTE_SIZE;
         }
     }
 
@@ -254,28 +280,65 @@ library PackedRoute {
     }
 
     /**
-     * @dev Decodes the swap value and returns the pair, percent, flags, tokenInId, and tokenOutId.
+     * @dev Returns the pair address from the swap value.
      */
-    function decode(bytes32 value)
-        internal
-        pure
-        returns (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId)
-    {
+    function pair(bytes32 value) internal pure returns (address pair_) {
         assembly ("memory-safe") {
-            pair := shr(ADDRESS_SHIFT, value)
-            percent := and(shr(PERCENT_SHIFT, value), UINT16_MASK)
-            flags := and(shr(FLAGS_SHIFT, value), UINT16_MASK)
-            tokenInId := and(shr(TOKEN_IN_SHIFT, value), UINT8_MASK)
-            tokenOutId := and(shr(TOKEN_OUT_SHIFT, value), UINT8_MASK)
+            pair_ := shr(ADDRESS_SHIFT, value)
+        }
+    }
+
+    /**
+     * @dev Returns the percent value from the swap value.
+     */
+    function percent(bytes32 value) internal pure returns (uint256 percent_) {
+        assembly ("memory-safe") {
+            percent_ := and(shr(PERCENT_SHIFT, value), UINT16_MASK)
         }
     }
 
     /**
      * @dev Returns the flags value from the swap value.
      */
-    function getFlags(bytes32 value) internal pure returns (uint256 flags) {
+    function flags(bytes32 value) internal pure returns (uint256 flags_) {
         assembly ("memory-safe") {
-            flags := and(shr(FLAGS_SHIFT, value), UINT16_MASK)
+            flags_ := and(shr(FLAGS_SHIFT, value), UINT16_MASK)
         }
+    }
+
+    /**
+     * @dev Returns the tokenInId from the swap value.
+     */
+    function tokenInId(bytes32 value) internal pure returns (uint256 tokenInId_) {
+        assembly ("memory-safe") {
+            tokenInId_ := and(shr(TOKEN_IN_SHIFT, value), UINT8_MASK)
+        }
+    }
+
+    /**
+     * @dev Returns the tokenOutId from the swap value.
+     */
+    function tokenOutId(bytes32 value) internal pure returns (uint256 tokenOutId_) {
+        assembly ("memory-safe") {
+            tokenOutId_ := and(shr(TOKEN_OUT_SHIFT, value), UINT8_MASK)
+        }
+    }
+
+    /**
+     * @dev Returns the length of the extra data at the end of the route.
+     * If there is no extra data or if the swapLength is less than or equal to EXTRA_DATA_LENGTH_SIZE, returns 0.
+     * If the route is not of the correct length, the function won't revert and might return an incorrect value.
+     * Always use `start` to validate the route length before calling this function.
+     * Reverts if the extra data length is not even.
+     */
+    function extraDataLength(bytes calldata route, uint256 swapLength) internal pure returns (uint256 length) {
+        assembly ("memory-safe") {
+            length :=
+                mul(
+                    gt(swapLength, EXTRA_DATA_LENGTH_SIZE),
+                    shr(EXTRA_DATA_LENGTH_SHIFT, calldataload(sub(add(route.offset, route.length), EXTRA_DATA_LENGTH_SIZE)))
+                )
+        }
+        if (length & 1 == 1) revert PackedRoute__InvalidExtraDataLength();
     }
 }

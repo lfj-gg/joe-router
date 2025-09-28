@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {PackedRoute} from "./PackedRoute.sol";
+import {TokenLib} from "./TokenLib.sol";
+
 /**
  * @title PairInteraction
  * @dev Library for interacting with Uniswap V2, LFJ, and Uniswap V3 pairs.
  */
 library PairInteraction {
     error PairInteraction__InvalidReturnData();
+    error PairInteraction__CallFailed();
+    error PairInteraction__InvalidState();
 
     uint256 internal constant MASK_UINT112 = 0xffffffffffffffffffffffffffff;
-    uint256 internal constant MIN_SWAP_SQRT_RATIO_UV3 = 4295128739 + 1;
-    uint256 internal constant MAX_SWAP_SQRT_RATIO_UV3 = 1461446703485210103287273052203988822378723970342 - 1;
+    uint256 internal constant MIN_SWAP_SQRT_RATIO = 4295128739 + 1;
+    uint256 internal constant MAX_SWAP_SQRT_RATIO = 1461446703485210103287273052203988822378723970342 - 1;
 
     /**
      * @dev Returns the ordered reserves of a Uniswap V2 pair.
@@ -50,6 +55,7 @@ library PairInteraction {
      * - The call must succeed.
      */
     function swapUV2(address pair, uint256 amount0, uint256 amount1, address recipient) internal {
+        uint256 success;
         assembly ("memory-safe") {
             let ptr := mload(0x40)
 
@@ -62,11 +68,9 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 160)) // update free memory pointer to 160 because 160:192 is 0
 
-            if iszero(call(gas(), pair, 0, add(ptr, 28), 164, 0, 0)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := call(gas(), pair, 0, add(ptr, 28), 164, 0, 0)
         }
+        _bubbleRevert(success);
     }
 
     /**
@@ -84,6 +88,7 @@ library PairInteraction {
         returns (uint256 amountIn)
     {
         uint256 returnDataSize;
+        uint256 success;
         assembly ("memory-safe") {
             let ptr := mload(0x40)
 
@@ -94,15 +99,13 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 128))
 
-            if iszero(staticcall(gas(), router, add(ptr, 28), 100, 0, 32)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := staticcall(gas(), router, add(ptr, 28), 100, 0, 32)
 
             returnDataSize := returndatasize()
 
             amountIn := mload(0)
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 32) revert PairInteraction__InvalidReturnData();
     }
@@ -117,6 +120,7 @@ library PairInteraction {
      */
     function swapLegacyLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
+        uint256 success;
 
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
@@ -125,10 +129,7 @@ library PairInteraction {
             mstore(32, swapForY)
             mstore(64, recipient)
 
-            if iszero(call(gas(), pair, 0, 28, 68, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := call(gas(), pair, 0, 28, 68, 0, 64)
 
             returnDataSize := returndatasize()
 
@@ -138,6 +139,7 @@ library PairInteraction {
 
             mstore(0x40, m0x40)
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
@@ -156,6 +158,7 @@ library PairInteraction {
         returns (uint256 amountIn, uint256 amountLeft)
     {
         uint256 returnDataSize;
+        uint256 success;
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
@@ -163,10 +166,7 @@ library PairInteraction {
             mstore(32, amountOut)
             mstore(64, swapForY)
 
-            if iszero(staticcall(gas(), pair, 28, 68, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := staticcall(gas(), pair, 28, 68, 0, 64)
 
             returnDataSize := returndatasize()
 
@@ -175,6 +175,7 @@ library PairInteraction {
 
             mstore(0x40, m0x40)
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
@@ -189,6 +190,7 @@ library PairInteraction {
      */
     function swapLB(address pair, bool swapForY, address recipient) internal returns (uint256 amountOut) {
         uint256 returnDataSize;
+        uint256 success;
 
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
@@ -197,10 +199,7 @@ library PairInteraction {
             mstore(32, swapForY)
             mstore(64, recipient)
 
-            if iszero(call(gas(), pair, 0, 28, 68, 0, 32)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := call(gas(), pair, 0, 28, 68, 0, 32)
 
             returnDataSize := returndatasize()
 
@@ -210,6 +209,7 @@ library PairInteraction {
 
             mstore(0x40, m0x40)
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 32) revert PairInteraction__InvalidReturnData();
     }
@@ -255,15 +255,11 @@ library PairInteraction {
         returns (uint256 actualAmountOut, uint256 actualAmountIn, uint256 expectedHash)
     {
         (uint256 success, uint256 ptr) = callSwapUV3(pair, recipient, zeroForOne, int256(amountIn), tokenIn);
+        _bubbleRevert(success);
 
         uint256 returnDataSize;
 
         assembly ("memory-safe") {
-            if iszero(success) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
-
             returnDataSize := returndatasize()
 
             mstore(add(ptr, 64), tokenIn)
@@ -336,7 +332,7 @@ library PairInteraction {
         internal
         returns (uint256 success, uint256 ptr)
     {
-        uint256 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO_UV3 : MAX_SWAP_SQRT_RATIO_UV3;
+        uint256 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO : MAX_SWAP_SQRT_RATIO;
 
         assembly ("memory-safe") {
             ptr := mload(0x40)
@@ -370,6 +366,7 @@ library PairInteraction {
         returns (uint256 amountIn, uint256 actualAmountOut)
     {
         uint256 returnDataSize;
+        uint256 success;
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
@@ -377,10 +374,7 @@ library PairInteraction {
             mstore(32, sub(0, amountOut))
             mstore(64, swapForY)
 
-            if iszero(staticcall(gas(), pair, 28, 68, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := staticcall(gas(), pair, 28, 68, 0, 64)
 
             returnDataSize := returndatasize()
 
@@ -399,6 +393,7 @@ library PairInteraction {
 
             mstore(0x40, m0x40)
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
@@ -416,6 +411,7 @@ library PairInteraction {
         returns (uint256 amountOut, uint256 actualAmountIn)
     {
         uint256 returnDataSize;
+        uint256 success;
 
         assembly ("memory-safe") {
             let ptr := mload(0x40)
@@ -430,11 +426,7 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 160)) // update free memory pointer to 160 because 160:224 is 0
 
-            if iszero(call(gas(), pair, 0, add(ptr, 28), 196, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
-
+            success := call(gas(), pair, 0, add(ptr, 28), 196, 0, 64)
             returnDataSize := returndatasize()
 
             switch swapForY
@@ -449,6 +441,7 @@ library PairInteraction {
 
             amountOut := sub(0, amountOut) // Invert the sign
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
@@ -496,6 +489,7 @@ library PairInteraction {
         uint256 sqrtLimitPriceX96 = getSqrtLimitPriceInTMV2(pair, swapForY);
 
         uint256 returnDataSize;
+        uint256 success;
         assembly ("memory-safe") {
             let ptr := mload(0x40)
 
@@ -506,11 +500,7 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 128))
 
-            if iszero(staticcall(gas(), pair, add(ptr, 28), 100, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
-
+            success := staticcall(gas(), pair, add(ptr, 28), 100, 0, 64)
             returnDataSize := returndatasize()
 
             switch swapForY
@@ -525,6 +515,7 @@ library PairInteraction {
 
             actualAmountOut := sub(0, actualAmountOut) // Invert the sign
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
@@ -544,6 +535,7 @@ library PairInteraction {
         uint256 sqrtLimitPriceX96 = getSqrtLimitPriceInTMV2(pair, swapForY);
 
         uint256 returnDataSize;
+        uint256 success;
         assembly ("memory-safe") {
             let ptr := mload(0x40)
 
@@ -555,10 +547,7 @@ library PairInteraction {
 
             mstore(0x40, add(ptr, 160))
 
-            if iszero(call(gas(), pair, 0, add(ptr, 28), 132, 0, 64)) {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            success := call(gas(), pair, 0, add(ptr, 28), 132, 0, 64)
 
             returnDataSize := returndatasize()
 
@@ -574,7 +563,303 @@ library PairInteraction {
 
             amountOut := sub(0, amountOut) // Invert the sign
         }
+        _bubbleRevert(success);
 
         if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
+    }
+
+    /**
+     * @dev Decodes the extra data for a Uniswap V4 pool from the route.
+     * The dataOffset is the offset in the route where the extra data starts in the route.
+     * The extraData must have an even length.
+     * Requirements:
+     * - The extra data must be formatted as follows:
+     *   [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable] (30 bytes + hookData length)
+     *   - The fee is the fee of the pool in hundredths of a bip, i.e. 1e-6. If the highest bit is 1, the pool has a dynamic fee and must be exactly equal to 0x800000
+     *   - The tickSpacing is the pool tick spacing.
+     *   - The nativeFlag indicates if one of the tokens is native (1: tokenIn is native, 2: tokenOut is native, otherwise both are ERC20).
+     *   - The hooks is the address of the hooks contract.
+     *   - The hookData length is the length of the hookData in bytes (must be an even number for safety)
+     *   - The hookData is the data to be passed to the hooks contract (can be empty).
+     */
+    function prepareDataUV4(
+        bytes calldata route,
+        bytes32 value,
+        uint256 dataOffset,
+        bool zeroForOne,
+        int256 deltaAmount
+    ) internal pure returns (bytes memory data) {
+        unchecked {
+            uint256 nativeFlag;
+            uint256 extraDataOffset;
+            assembly ("memory-safe") {
+                extraDataOffset := add(route.offset, dataOffset)
+                nativeFlag := shr(248, calldataload(add(extraDataOffset, 6)))
+            }
+
+            // 1 -> tokenIn is native, tokenOut is ERC20
+            // 2 -> tokenIn is ERC20, tokenOut is native
+            // any other value -> both tokens are ERC20
+            address token0 = nativeFlag == 1 ? address(0) : PackedRoute.token(route, PackedRoute.tokenInId(value));
+            address token1 = nativeFlag == 2 ? address(0) : PackedRoute.token(route, PackedRoute.tokenOutId(value));
+            (token0, token1) = token0 < token1 ? (token0, token1) : (token1, token0);
+
+            uint256 priceLimit = zeroForOne ? MIN_SWAP_SQRT_RATIO : MAX_SWAP_SQRT_RATIO;
+
+            // data = [offset: 32][length: 32]
+            //        {PoolKey: [token0: 32][token1: 32][fee: 32][tickSpacing: 32][hooks: 32]}
+            //        {SwapParams: [zeroForOne: 32][amountSpecified: 32][priceLimit: 32]}
+            //        {HookData: [offset: 32][length: 32][data: variable]}
+            // Total length = 32 * 2 + 32 * 5 + 32 * 3 + 32 * 2 + hookData length = 64 + 320 + hookData length
+            assembly ("memory-safe") {
+                let hookDataLength := shr(232, calldataload(add(extraDataOffset, 27)))
+                let dataLength := shl(5, shr(5, add(hookDataLength, 351))) // Round up to the next complete word (320 + 31 = 351)
+
+                data := mload(0x40)
+                mstore(0x40, add(data, add(96, dataLength))) // update free memory pointer
+
+                mstore(data, add(64, dataLength)) // length
+                mstore(add(data, 32), 0x20) // offset
+                mstore(add(data, 64), dataLength) // length
+
+                mstore(add(data, 96), token0) // PoolKey.token0
+                mstore(add(data, 128), token1) // PoolKey.token1
+                mstore(add(data, 160), shr(232, calldataload(extraDataOffset))) // PoolKey.fee
+                mstore(add(data, 192), sar(232, calldataload(add(extraDataOffset, 3)))) // PoolKey.tickSpacing
+                mstore(add(data, 224), shr(96, calldataload(add(extraDataOffset, 7)))) // PoolKey.hooks
+
+                mstore(add(data, 256), zeroForOne) // SwapParams.zeroForOne
+                mstore(add(data, 288), deltaAmount) // SwapParams.amountSpecified
+                mstore(add(data, 320), priceLimit) // SwapParams.priceLimit
+
+                mstore(add(data, 352), 288) // HookData.offset
+                mstore(add(data, 384), hookDataLength) // HookData.length
+                calldatacopy(add(data, 416), add(extraDataOffset, 30), hookDataLength) // HookData.data
+            }
+        }
+    }
+
+    /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a Uniswap V4 pool.
+     * The function actually tries to swap token but revert before having to send any token.
+     *
+     * Requirements:
+     * - The call must revert with `(int256 amount0Delta, int256 amount1Delta)` data.
+     */
+    function getSwapInUV4(
+        bytes calldata route,
+        bytes32 value,
+        address manager,
+        address dataOffset,
+        bool zeroForOne,
+        uint256 amountOut
+    ) internal returns (uint256 amountIn) {
+        (uint256 success, int256 deltaIn,) =
+            callSwapUV4(route, value, manager, dataOffset, zeroForOne, int256(amountOut));
+        if (success != 0) revert PairInteraction__InvalidState(); // Revert if the call succeeded as we expect it to fail
+        unchecked {
+            return uint256(-deltaIn); // Invert the sign
+        }
+    }
+
+    /**
+     * @dev Swaps tokenIn for tokenOut in a Uniswap V4 pool.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     */
+    function swapUV4(
+        bytes calldata route,
+        bytes32 value,
+        address manager,
+        address dataOffset,
+        bool zeroForOne,
+        uint256 amountIn
+    ) internal returns (uint256 amountOut, uint256 actualAmountIn) {
+        (uint256 success, int256 deltaIn, int256 deltaOut) =
+            callSwapUV4(route, value, manager, dataOffset, zeroForOne, -int256(amountIn));
+        _bubbleRevert(success);
+        unchecked {
+            return (uint256(deltaOut), uint256(-deltaIn)); // Invert the sign of deltaIn
+        }
+    }
+
+    /**
+     * @dev Calls the `unlock` function of a Uniswap V4 pool.
+     * This function doesn't revert on failure, it returns a success flag instead.
+     * It also returns the actual amount in and out of the swap.
+     * Requirements:
+     * - The call must return exactly 64 bytes of data.
+     */
+    function callSwapUV4(
+        bytes calldata route,
+        bytes32 value,
+        address manager,
+        address dataOffset,
+        bool zeroForOne,
+        int256 deltaAmount
+    ) private returns (uint256 success, int256 deltaIn, int256 deltaOut) {
+        bytes memory data = prepareDataUV4(route, value, uint256(uint160(dataOffset)), zeroForOne, deltaAmount);
+
+        uint256 returnDataSize;
+
+        assembly ("memory-safe") {
+            let length := mload(data)
+            mstore(data, 0x48c89491) // unlock(bytes)
+
+            success := call(gas(), manager, 0, add(data, 28), add(length, 4), data, 128)
+
+            returnDataSize := returndatasize()
+
+            switch zeroForOne
+            case 0 {
+                deltaIn := mload(add(data, 96))
+                deltaOut := mload(add(data, 64))
+            }
+            default {
+                deltaIn := mload(add(data, 64))
+                deltaOut := mload(add(data, 96))
+            }
+        }
+
+        if (returnDataSize != 128) revert PairInteraction__InvalidReturnData();
+    }
+
+    /**
+     * @dev Callback function for Uniswap V4 swaps.
+     * This function should be called after the `unlock` callback from the Uniswap V4 manager.
+     * This function will then call the swap function and settle the amounts.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The caller must be the Uniswap V4 manager.
+     */
+    function swapUV4Callback(bytes calldata data, address recipient, address wnative)
+        internal
+        returns (int256 amount0, int256 amount1)
+    {
+        address token0;
+        address token1;
+
+        uint256 success;
+        uint256 returnDataSize;
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+
+            mstore(ptr, 0xf3cd914c) // swap((address,address,uint24,int24,address),(bool,int256,uint160),bytes)
+            calldatacopy(add(ptr, 32), add(data.offset, 68), sub(data.length, 68))
+
+            mstore(0x40, shl(5, shr(5, sub(add(ptr, data.length), 37)))) // Round up to the next complete word
+
+            success := call(gas(), caller(), 0, add(ptr, 28), sub(data.length, 64), 0, 32)
+            returnDataSize := returndatasize()
+
+            let amounts := mload(0)
+            amount0 := sar(128, amounts)
+            amount1 := signextend(15, amounts)
+
+            // Revert with amounts to decode them within getSwapInUV4
+            if iszero(recipient) {
+                mstore(0, 0x20)
+                mstore(32, 0x40)
+                mstore(64, amount0)
+                mstore(96, amount1)
+                revert(0, 128)
+            }
+
+            token0 := mload(add(ptr, 32))
+            token1 := mload(add(ptr, 64))
+        }
+        _bubbleRevert(success);
+        if (returnDataSize != 32) revert PairInteraction__InvalidReturnData();
+
+        settleOrTakeUV4(token0, recipient, amount0, wnative);
+        settleOrTakeUV4(token1, recipient, amount1, wnative);
+    }
+
+    /**
+     * @dev Settles or takes the amount for a token in a Uniswap V4 swap.
+     * If delta is negative, it means we need to settle the amount (send it to the pair).
+     * If delta is positive, it means we need to take the amount (receive it from the pair).
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The caller must be the Uniswap V4 manager.
+     */
+    function settleOrTakeUV4(address token, address recipient, int256 delta, address wnative) internal {
+        if (delta < 0) {
+            uint256 success;
+            // Settle the amount by calling sync, then transferring the tokens and finally calling settle
+            assembly ("memory-safe") {
+                delta := sub(0, delta)
+
+                mstore(0, 0xa5841194) // sync(address)
+                mstore(32, token)
+                success := call(gas(), caller(), 0, 28, 64, 0, 0)
+            }
+            _bubbleRevert(success);
+
+            uint256 nativeValue;
+            if (token == address(0)) {
+                // The token is native, unwrap wnative and send it
+                TokenLib.unwrap(wnative, (nativeValue = uint256(delta)));
+            } else {
+                TokenLib.transfer(token, msg.sender, uint256(delta));
+            }
+
+            uint256 amount;
+            uint256 returnDataSize;
+            assembly ("memory-safe") {
+                mstore(0, 0x11da60b4) // settle()
+                success := call(gas(), caller(), nativeValue, 28, 4, 0, 32)
+                returnDataSize := returndatasize()
+                amount := mload(0)
+            }
+            _bubbleRevert(success);
+            if (returnDataSize != 32) revert PairInteraction__InvalidReturnData();
+        } else if (delta > 0) {
+            // Take the amount by calling take, if token is native it will be wrapped after being received
+            // (within the receive function)
+            address to = token == address(0) ? address(this) : recipient;
+            uint256 success;
+            assembly ("memory-safe") {
+                let ptr := mload(0x40)
+
+                mstore(ptr, 0x0b0d9c09) // take(address,address,uint256)
+                mstore(add(ptr, 32), token)
+                mstore(add(ptr, 64), to)
+                mstore(add(ptr, 96), delta)
+
+                success := call(gas(), caller(), 0, add(ptr, 28), 100, 0, 0)
+
+                mstore(0x40, add(ptr, 128))
+            }
+            _bubbleRevert(success);
+            if (to != recipient) {
+                // If the token is native, use this as a temporary address to receive the native token
+                // then wrap it, and send it to the actual recipient
+                TokenLib.transfer(wnative, recipient, uint256(delta));
+            }
+        }
+    }
+
+    /**
+     * @dev Bubbles up a revert if the success flag is false.
+     * It copies the return data to memory and reverts with it.
+     * If there is no return data, it reverts with a `PairInteraction__CallFailed` error.
+     */
+    function _bubbleRevert(uint256 success) private pure {
+        assembly ("memory-safe") {
+            if iszero(success) {
+                if returndatasize() {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+
+                mstore(0, 0x824d2235) // PairInteraction__CallFailed()
+                revert(0x1c, 4)
+            }
+        }
     }
 }

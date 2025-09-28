@@ -70,8 +70,6 @@ contract RouterLibTest is Test {
                 mstore(20, shl(96, caller()))
                 calldatacopy(40, 144, 20)
 
-                log0(0, 60)
-
                 key := keccak256(0, 60)
             }
 

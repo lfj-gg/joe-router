@@ -71,7 +71,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     }
 
     function setUp() public {
-        routerLogic = new RouterLogic(address(this), address(0), feeReceiver, 0.15e4);
+        routerLogic = new RouterLogic(address(this), address(0), address(0), address(1), feeReceiver, 0.15e4);
 
         token0 = new MockERC20("Token0", "T0", 18);
         token1 = new MockERC20("Token1", "T1", 9);
@@ -91,13 +91,13 @@ contract RouterLogicTest is Test, PackedRouteHelper {
 
     function test_Constructor() public {
         vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeReceiver.selector);
-        new RouterLogic(address(0), address(1), address(0), 0);
+        new RouterLogic(address(0), address(0), address(0), address(0), address(0), 0);
 
         vm.expectRevert(IFeeAdapter.FeeAdapter__InvalidProtocolFeeShare.selector);
-        new RouterLogic(address(0), address(1), address(1), 10_001);
+        new RouterLogic(address(0), address(0), address(0), address(0), address(1), 10_001);
 
         vm.expectRevert(IRouterLogic.RouterLogic__InvalidRouter.selector);
-        new RouterLogic(address(0), address(1), address(1), 0);
+        new RouterLogic(address(0), address(0), address(0), address(0), address(1), 0);
     }
 
     function test_Fuzz_Revert_SwapExactInStartAndVerify(
@@ -360,8 +360,10 @@ contract RouterLogicTest is Test, PackedRouteHelper {
         assertEq(totalOut, amountOut, "test_Fuzz_SwapExactInTaxToken::2");
     }
 
+    event Log(uint256 val0, uint256 val1, uint256 val2, uint256 val3);
+
     function test_Fuzz_Revert_InvalidId(uint16 id) public {
-        uint16 invalidId = uint16(bound(id, (TMV2_ID >> 8) + 1, type(uint8).max) << 8);
+        uint16 invalidId = uint16(bound(id, (UV4_ID >> 8) + 1, type(uint8).max) << 8);
 
         (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 

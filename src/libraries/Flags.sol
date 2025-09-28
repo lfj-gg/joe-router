@@ -25,6 +25,7 @@ library Flags {
     uint256 internal constant UNISWAP_V3_ID = 4 << ID_OFFSET;
     uint256 internal constant LFJ_TOKEN_MILL_ID = 5 << ID_OFFSET;
     uint256 internal constant LFJ_TOKEN_MILL_V2_ID = 6 << ID_OFFSET;
+    uint256 internal constant UNISWAP_V4_ID = 7 << ID_OFFSET;
 
     /**
      * @dev Returns the id of the flags variable

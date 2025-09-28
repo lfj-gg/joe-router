@@ -31,7 +31,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
         vm.createSelectFork(StdChains.getChain("avalanche_fuji").rpcUrl, 38758068);
 
         router = new Router(WAVAX, address(this));
-        logic = new RouterLogic(address(router), address(0), feeReceiver, 0.15e4);
+        logic = new RouterLogic(address(router), address(0), address(0), WAVAX, feeReceiver, 0.15e4);
 
         router.updateRouterLogic(address(logic), true);
 

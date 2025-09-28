@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import "../../src/RouterAdapter.sol";
 import "../../src/libraries/PairInteraction.sol";
+import "../PackedRouteHelper.sol";
 import "../interfaces/ILBPair.sol";
 import "../interfaces/ILegacyLBPair.sol";
 import "../interfaces/ILegacyLBRouter.sol";
@@ -12,14 +13,30 @@ import "../interfaces/ITMPair.sol";
 import "../interfaces/ITMPairV2.sol";
 import "../interfaces/IUV2Pair.sol";
 import "../interfaces/IUV3Pair.sol";
+import "../interfaces/IUV4Manager.sol";
 
-contract PairInteractionTest is Test {
+import "../mocks/MockERC20.sol";
+import "../mocks/MockV4Manager.sol";
+import "../mocks/WNative.sol";
+
+contract PairInteractionTest is Test, PackedRouteHelper {
     error CustomError();
 
     uint256 _case;
 
     bytes _data;
     bytes _msgData;
+
+    address wnative;
+    address tokenA;
+    address tokenB;
+
+    address payable uniswapV4;
+    address to;
+
+    receive() external payable {
+        if (msg.sender != wnative) TokenLib.wrap(wnative, msg.value);
+    }
 
     fallback() external {
         uint256 c = _case;
@@ -48,7 +65,7 @@ contract PairInteractionTest is Test {
         if (c == 3 || c == 4) {
             (bytes memory b0, bytes memory b1) = abi.decode(_data, (bytes, bytes));
 
-            if (msg.sig == ITMPairV2.getSqrtRatiosBounds.selector) {
+            if (msg.sig == ITMPairV2.getSqrtRatiosBounds.selector || msg.sig == IUV4Manager.sync.selector) {
                 assembly ("memory-safe") {
                     return(add(b0, 0x20), mload(b0))
                 }
@@ -66,6 +83,21 @@ contract PairInteractionTest is Test {
                 }
             }
         }
+
+        if (c == 5) {
+            (int256 amount0, int256 amount1) = PairInteraction.swapUV4Callback(msg.data, to, wnative);
+            bytes memory returnData = abi.encodePacked(uint256(0x20), uint256(0x40), amount0, amount1);
+            assembly ("memory-safe") {
+                return(add(returnData, 0x20), mload(returnData))
+            }
+        }
+    }
+
+    function setUp() public {
+        wnative = address(new WNative());
+        tokenA = address(new MockERC20("TokenA", "TK0", 18));
+        tokenB = address(new MockERC20("TokenB", "TK1", 6));
+        uniswapV4 = payable(address(new MockV4Manager()));
     }
 
     function test_Fuzz_GetOrderedReservesUV2(bool zeroForOne, uint112 reserve0, uint112 reserve1) public {
@@ -315,7 +347,7 @@ contract PairInteractionTest is Test {
                 recipient,
                 zeroForOne,
                 amountIn,
-                zeroForOne ? PairInteraction.MIN_SWAP_SQRT_RATIO_UV3 : PairInteraction.MAX_SWAP_SQRT_RATIO_UV3,
+                zeroForOne ? PairInteraction.MIN_SWAP_SQRT_RATIO : PairInteraction.MAX_SWAP_SQRT_RATIO,
                 abi.encode(tokenIn)
             ),
             "test_Fuzz_SwapUV3::4"
@@ -557,6 +589,342 @@ contract PairInteractionTest is Test {
         this.swapTMV2(address(this), recipient, amountOut, swapForY);
     }
 
+    function _buildV4Route(
+        address tokenIn,
+        address tokenOut,
+        address hooks,
+        uint24 fee,
+        int24 tickSpacing,
+        bool zeroForOne,
+        bytes memory hookData
+    ) internal returns (bytes memory route, uint256 ptr, uint256 extraDataPtr) {
+        uint8 nativeFlag = 0;
+        if (tokenIn == address(0)) {
+            nativeFlag = 1;
+            tokenIn = wnative;
+        }
+        if (tokenOut == address(0)) {
+            nativeFlag = 2;
+            tokenOut = wnative;
+        }
+
+        uint256 length = hookData.length > 256 ? 256 : hookData.length;
+        length = length % 2 == 0 ? length : length + 1; // length must be even
+        assembly ("memory-safe") {
+            mstore(hookData, length)
+        }
+
+        (route, ptr) = _createRoutes(2, 1);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, tokenIn);
+        ptr = _setToken(route, ptr, tokenOut);
+        extraDataPtr = route.length;
+        _setRoute(
+            route,
+            ptr,
+            tokenIn,
+            tokenOut,
+            address(uint160(extraDataPtr)),
+            1e4,
+            UV4_ID | CALLBACK | (zeroForOne ? ZERO_FOR_ONE : ONE_FOR_ZERO)
+        );
+        route = abi.encodePacked(
+            route,
+            uint24(fee),
+            uint24(tickSpacing),
+            uint8(nativeFlag),
+            address(hooks),
+            uint24(hookData.length),
+            hookData,
+            uint24(3 + 3 + 1 + 20 + 3 + hookData.length)
+        );
+
+        // Safety check
+        (uint256 startPtr, uint256 nbTokens, uint256 nbSwaps) = this.start(route);
+        assertEq(startPtr, ptr, "_buildV4Route::1");
+        assertEq(nbTokens, 2, "_buildV4Route::2");
+        assertEq(nbSwaps, 1, "_buildV4Route::3");
+    }
+
+    function test_Fuzz_PrepareDataUV4(
+        address tokenIn,
+        address tokenOut,
+        address hooks,
+        uint24 fee,
+        int24 tickSpacing,
+        bool zeroForOne,
+        int256 deltaAmount,
+        bytes memory hookData
+    ) public {
+        if (tokenIn == tokenOut) tokenOut = address(uint160(tokenOut) + 1);
+
+        (bytes memory route, uint256 ptr, uint256 extraDataPtr) =
+            _buildV4Route(tokenIn, tokenOut, hooks, fee, tickSpacing, zeroForOne, hookData);
+
+        (, bytes32 value) = this.next(route, ptr);
+        bytes memory data = this.prepareDataUV4(route, value, extraDataPtr, zeroForOne, deltaAmount);
+
+        (address currency0, address currency1) = tokenIn < tokenOut ? (tokenIn, tokenOut) : (tokenOut, tokenIn);
+
+        IUV4Manager.PoolKey memory key = IUV4Manager.PoolKey({
+            currency0: currency0,
+            currency1: currency1,
+            fee: fee,
+            tickSpacing: tickSpacing,
+            hooks: hooks
+        });
+        IUV4Manager.SwapParams memory params = IUV4Manager.SwapParams({
+            zeroForOne: zeroForOne,
+            amountSpecified: deltaAmount,
+            sqrtPriceLimitX96: uint160(
+                zeroForOne ? PairInteraction.MIN_SWAP_SQRT_RATIO : PairInteraction.MAX_SWAP_SQRT_RATIO
+            )
+        });
+        bytes memory expectedData = abi.encode(key, params, hookData);
+        expectedData = abi.encodePacked(uint256(0x20), expectedData.length, expectedData);
+
+        assertEq(expectedData, data, "test_Fuzz_PrepareDataUV4::1");
+    }
+
+    function test_Fuzz_GetSwapInUV4(
+        address tokenIn,
+        address tokenOut,
+        address hooks,
+        uint24 fee,
+        int24 tickSpacing,
+        bool zeroForOne,
+        uint256 amountIn,
+        uint256 amountOut,
+        bytes memory hookData
+    ) public {
+        unchecked {
+            if (tokenIn == tokenOut) tokenOut = address(uint160(tokenOut) + 1);
+        }
+        amountIn = bound(amountIn, 1, uint256(int256(type(int128).max)));
+        amountOut = bound(amountOut, 1, uint256(int256(type(int128).max)));
+
+        (bytes memory route, uint256 ptr, uint256 extraDataPtr) =
+            _buildV4Route(tokenIn, tokenOut, hooks, fee, tickSpacing, zeroForOne, hookData);
+        (, bytes32 value) = this.next(route, ptr);
+
+        unchecked {
+            (int256 delta0, int256 delta1) =
+                zeroForOne ? (-int256(amountIn), int256(amountOut)) : (int256(amountOut), -int256(amountIn));
+            MockV4Manager(uniswapV4).set(int128(delta0), int128(delta1));
+        }
+
+        _case = 5;
+
+        actualIn = this.getSwapInUV4(route, value, uniswapV4, address(uint160(extraDataPtr)), zeroForOne, amountOut);
+        assertEq(actualIn, amountIn, "test_Fuzz_GetSwapInUV4::1");
+    }
+
+    struct SwapInput {
+        uint256 tokens;
+        address hooks;
+        uint24 fee;
+        int24 tickSpacing;
+        uint256 amountIn;
+        uint256 amountOut;
+    }
+
+    uint256 actualIn;
+    uint256 actualOut;
+
+    function test_Fuzz_SwapUV4(SwapInput memory input, bytes memory hookData) public {
+        input.amountIn = bound(input.amountIn, 1, uint256(int256(type(int128).max)));
+        input.amountOut = bound(input.amountOut, 1, uint256(int256(type(int128).max)));
+
+        address tokenIn;
+        address tokenOut;
+        {
+            uint256 tokens = input.tokens % 6;
+            if (tokens == 0) {
+                tokenIn = tokenA;
+                tokenOut = tokenB;
+            } else if (tokens == 1) {
+                tokenIn = tokenB;
+                tokenOut = tokenA;
+            } else if (tokens == 2) {
+                tokenIn = address(0);
+                tokenOut = tokenA;
+            } else if (tokens == 3) {
+                tokenIn = tokenA;
+                tokenOut = address(0);
+            } else if (tokens == 4) {
+                tokenIn = address(0);
+                tokenOut = tokenB;
+            } else {
+                tokenIn = tokenB;
+                tokenOut = address(0);
+            }
+        }
+
+        bool zeroForOne = tokenIn < tokenOut;
+
+        if (tokenIn == address(0)) {
+            vm.deal(address(this), input.amountIn);
+            TokenLib.wrap(wnative, input.amountIn);
+        } else if (tokenIn == tokenA) {
+            MockERC20(tokenA).mint(address(this), input.amountIn);
+        } else {
+            MockERC20(tokenB).mint(address(this), input.amountIn);
+        }
+
+        if (tokenOut == address(0)) {
+            vm.deal(uniswapV4, input.amountOut);
+        } else if (tokenOut == tokenA) {
+            MockERC20(tokenA).mint(uniswapV4, input.amountOut);
+        } else {
+            MockERC20(tokenB).mint(uniswapV4, input.amountOut);
+        }
+
+        bytes memory route;
+        uint256 extraDataPtr;
+        bytes32 value;
+        {
+            uint256 ptr;
+            (route, ptr, extraDataPtr) =
+                _buildV4Route(tokenIn, tokenOut, input.hooks, input.fee, input.tickSpacing, zeroForOne, hookData);
+            (, value) = this.next(route, ptr);
+
+            (int256 delta0, int256 delta1) = zeroForOne
+                ? (-int256(input.amountIn), int256(input.amountOut))
+                : (int256(input.amountOut), -int256(input.amountIn));
+            MockV4Manager(uniswapV4).set(int128(delta0), int128(delta1));
+        }
+
+        _case = 5;
+        to = address(this);
+
+        assertEq(
+            TokenLib.balanceOf(tokenIn == address(0) ? wnative : tokenIn, address(this)),
+            input.amountIn,
+            "test_Fuzz_SwapUV4::1"
+        );
+        assertEq(TokenLib.universalBalanceOf(tokenOut, uniswapV4), input.amountOut, "test_Fuzz_SwapUV4::2");
+
+        (actualOut, actualIn) =
+            this.swapUV4(route, value, uniswapV4, address(uint160(extraDataPtr)), zeroForOne, input.amountIn);
+
+        assertEq(actualIn, input.amountIn, "test_Fuzz_SwapUV4::3");
+        assertEq(actualOut, input.amountOut, "test_Fuzz_SwapUV4::4");
+        assertEq(TokenLib.universalBalanceOf(tokenIn, uniswapV4), input.amountIn, "test_Fuzz_SwapUV4::5");
+        assertEq(
+            TokenLib.balanceOf(tokenOut == address(0) ? wnative : tokenOut, address(this)),
+            input.amountOut,
+            "test_Fuzz_SwapUV4::6"
+        );
+    }
+
+    function test_Fuzz_Revert_GetSwapInUV4(uint256 returnDataSize) public {
+        (bytes memory route, uint256 ptr, uint256 extraDataPtr) =
+            _buildV4Route(tokenA, tokenB, address(0), 1, 1, true, new bytes(0));
+        (, bytes32 value) = this.next(route, ptr);
+
+        // Should revert if call doesn't fail
+        _case = 1;
+        _data = new bytes(128);
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidState.selector);
+        this.getSwapInUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+
+        // Should revert if error size is not 128
+        _case = 2;
+        _data = new bytes(bound(returnDataSize, 0, 127));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.getSwapInUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+
+        _data = new bytes(bound(returnDataSize, 129, 256));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.getSwapInUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+    }
+
+    function test_Fuzz_Revert_SwapUV4(uint256 returnDataSize) public {
+        (bytes memory route, uint256 ptr, uint256 extraDataPtr) =
+            _buildV4Route(tokenA, tokenB, address(0), 1, 1, true, new bytes(0));
+        (, bytes32 value) = this.next(route, ptr);
+
+        // Should revert if data size is not 128
+        _case = 1;
+        _data = new bytes(bound(returnDataSize, 0, 127));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.swapUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+
+        _data = new bytes(bound(returnDataSize, 129, 256));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.swapUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+
+        // Should revert if call fail
+        _case = 2;
+        _data = new bytes(128);
+        vm.expectRevert(new bytes(128));
+        this.swapUV4(route, value, address(this), address(uint160(extraDataPtr)), true, 1);
+    }
+
+    function test_Fuzz_Revert_SwapUV4Callback(uint256 returnDataSize) public {
+        // Should revert if call fail
+        _case = 2;
+        _data = abi.encodeWithSelector(CustomError.selector);
+        vm.expectRevert(CustomError.selector);
+        this.swapUV4Callback(new bytes(68), address(this), wnative);
+
+        // Should revert if data size is not 32
+        _case = 1;
+        _data = new bytes(bound(returnDataSize, 0, 31));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.swapUV4Callback(new bytes(68), address(this), wnative);
+
+        _data = new bytes(bound(returnDataSize, 33, 64));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.swapUV4Callback(new bytes(68), address(this), wnative);
+    }
+
+    function test_Fuzz_Revert_SettleUV4(int256 delta, uint256 returnDataSize) public {
+        delta = bound(delta, type(int256).min, -1);
+
+        // Should revert if sync fail
+        _case = 2;
+        _data = abi.encodeWithSelector(CustomError.selector);
+        vm.expectRevert(CustomError.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+        _data = new bytes(0);
+        vm.expectRevert(PairInteraction.PairInteraction__CallFailed.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+
+        unchecked {
+            MockERC20(tokenA).mint(address(this), uint256(-delta));
+        }
+
+        // Should revert if settle fails
+        _case = 3;
+        _data = abi.encode(new bytes(0), new bytes(0));
+        vm.expectRevert(CustomError.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+
+        // Should revert if settle returns data of size not 32
+        _data = abi.encode(new bytes(0), new bytes(bound(returnDataSize, 2, 31)));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+
+        _data = abi.encode(new bytes(0), new bytes(bound(returnDataSize, 33, 64)));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+    }
+
+    function test_Fuzz_Revert_TakeUV4(int256 delta) public {
+        delta = bound(delta, 1, type(int256).max);
+
+        // Should revert if take fails
+        _case = 2;
+        _data = abi.encodeWithSelector(CustomError.selector);
+        vm.expectRevert(CustomError.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+
+        _data = new bytes(0);
+        vm.expectRevert(PairInteraction.PairInteraction__CallFailed.selector);
+        this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
+    }
+
     // Helper functions
 
     function getReservesUV2(address pair, bool ordered) external view returns (uint256, uint256) {
@@ -622,5 +990,56 @@ contract PairInteractionTest is Test {
         returns (uint256, uint256)
     {
         return PairInteraction.swapTMV2(pair, recipient, amountIn, swapForY);
+    }
+
+    function start(bytes calldata route) external pure returns (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) {
+        return PackedRoute.start(route);
+    }
+
+    function next(bytes calldata route, uint256 ptr) external pure returns (uint256 newPtr, bytes32 value) {
+        return PackedRoute.next(route, ptr);
+    }
+
+    function prepareDataUV4(
+        bytes calldata route,
+        bytes32 value,
+        uint256 dataOffset,
+        bool zeroForOne,
+        int256 deltaAmount
+    ) external pure returns (bytes memory data) {
+        return PairInteraction.prepareDataUV4(route, value, dataOffset, zeroForOne, deltaAmount);
+    }
+
+    function getSwapInUV4(
+        bytes calldata route,
+        bytes32 value,
+        address manager,
+        address dataOffset,
+        bool zeroForOne,
+        uint256 amountOut
+    ) external returns (uint256 amountIn) {
+        return PairInteraction.getSwapInUV4(route, value, manager, dataOffset, zeroForOne, amountOut);
+    }
+
+    function swapUV4(
+        bytes calldata route,
+        bytes32 value,
+        address manager,
+        address dataOffset,
+        bool zeroForOne,
+        uint256 amountIn
+    ) external returns (uint256 actualAmountOut, uint256 actualAmountIn) {
+        return PairInteraction.swapUV4(route, value, manager, dataOffset, zeroForOne, amountIn);
+    }
+
+    function swapUV4Callback(bytes calldata data, address recipient, address wnative_)
+        external
+        returns (int256 delta0, int256 delta1)
+    {
+        return PairInteraction.swapUV4Callback(data, recipient, wnative_);
+    }
+
+    function settleOrTakeUV4(address token, address recipient, int256 delta, address wnative_) external {
+        PairInteraction.settleOrTakeUV4(token, recipient, delta, wnative_);
     }
 }
