@@ -69,11 +69,8 @@ contract PairInteractionTest is Test, PackedRouteHelper {
                     return(add(b0, 0x20), mload(b0))
                 }
             } else {
-                if (b1.length == 0) {
-                    revert CustomError();
-                } else if (b1.length == 1) {
-                    revert("Error String");
-                }
+                if (b1.length == 0) revert CustomError();
+                else if (b1.length == 1) revert("Error String");
 
                 if (c == 4) _msgData = msg.data;
 
@@ -770,13 +767,9 @@ contract PairInteractionTest is Test, PackedRouteHelper {
             MockERC20(tokenB).mint(address(this), input.amountIn);
         }
 
-        if (tokenOut == address(0)) {
-            vm.deal(uniswapV4, input.amountOut);
-        } else if (tokenOut == tokenA) {
-            MockERC20(tokenA).mint(uniswapV4, input.amountOut);
-        } else {
-            MockERC20(tokenB).mint(uniswapV4, input.amountOut);
-        }
+        if (tokenOut == address(0)) vm.deal(uniswapV4, input.amountOut);
+        else if (tokenOut == tokenA) MockERC20(tokenA).mint(uniswapV4, input.amountOut);
+        else MockERC20(tokenB).mint(uniswapV4, input.amountOut);
 
         bytes memory route;
         uint256 extraDataPtr;

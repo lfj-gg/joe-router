@@ -55,10 +55,10 @@ abstract contract RouterAdapter {
         uint256 id = Flags.id(callbackData);
         address account = address(uint160(callbackData >> 96));
 
-        if (id == Flags.UNISWAP_V3_ID) {
-            if (msg.sender == account) return _uniswapV3SwapCallback(data);
-        } else if (id == Flags.UNISWAP_V4_ID) {
-            if (msg.sender == UNISWAP_V4_MANAGER) return UNISWAP_V4_MANAGERUnlockCallback(data, account);
+        if (id == Flags.UNISWAP_V3_ID && msg.sender == account) {
+            return _uniswapV3SwapCallback(data);
+        } else if (id == Flags.UNISWAP_V4_ID && msg.sender == UNISWAP_V4_MANAGER) {
+            return UNISWAP_V4_MANAGERUnlockCallback(data, account);
         }
 
         assembly ("memory-safe") {
@@ -79,23 +79,14 @@ abstract contract RouterAdapter {
 
         uint256 id = Flags.id(flags);
 
-        if (id == Flags.UNISWAP_V2_ID) {
-            amountIn = _getAmountInUV2(pair, flags, amountOut);
-        } else if (id == Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID) {
-            amountIn = _getAmountInLegacyLB(pair, flags, amountOut);
-        } else if (id == Flags.LFJ_LIQUIDITY_BOOK_ID) {
-            amountIn = _getAmountInLB(pair, flags, amountOut);
-        } else if (id == Flags.UNISWAP_V3_ID) {
-            amountIn = _getAmountInUV3(pair, flags, amountOut);
-        } else if (id == Flags.LFJ_TOKEN_MILL_ID) {
-            amountIn = _getAmountInTM(pair, flags, amountOut);
-        } else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) {
-            amountIn = _getAmountInTMV2(pair, flags, amountOut);
-        } else if (id == Flags.UNISWAP_V4_ID) {
-            amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
-        } else {
-            revert RouterAdapter__InvalidId();
-        }
+        if (id == Flags.UNISWAP_V2_ID) amountIn = _getAmountInUV2(pair, flags, amountOut);
+        else if (id == Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID) amountIn = _getAmountInLegacyLB(pair, flags, amountOut);
+        else if (id == Flags.LFJ_LIQUIDITY_BOOK_ID) amountIn = _getAmountInLB(pair, flags, amountOut);
+        else if (id == Flags.UNISWAP_V3_ID) amountIn = _getAmountInUV3(pair, flags, amountOut);
+        else if (id == Flags.LFJ_TOKEN_MILL_ID) amountIn = _getAmountInTM(pair, flags, amountOut);
+        else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountIn = _getAmountInTMV2(pair, flags, amountOut);
+        else if (id == Flags.UNISWAP_V4_ID) amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
+        else revert RouterAdapter__InvalidId();
     }
 
     /**
@@ -115,23 +106,14 @@ abstract contract RouterAdapter {
         address pair = PackedRoute.pair(value);
         uint256 id = Flags.id(flags);
 
-        if (id == Flags.UNISWAP_V2_ID) {
-            amountOut = _swapUV2(pair, flags, amountIn, recipient);
-        } else if (id == Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID) {
-            amountOut = _swapLegacyLB(pair, flags, recipient);
-        } else if (id == Flags.LFJ_LIQUIDITY_BOOK_ID) {
-            amountOut = _swapLB(pair, flags, recipient);
-        } else if (id == Flags.UNISWAP_V3_ID) {
-            amountOut = _swapUV3(pair, flags, recipient, amountIn, tokenIn);
-        } else if (id == Flags.LFJ_TOKEN_MILL_ID) {
-            amountOut = _swapTM(pair, flags, recipient, amountIn);
-        } else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) {
-            amountOut = _swapTMV2(pair, flags, recipient, amountIn);
-        } else if (id == Flags.UNISWAP_V4_ID) {
-            amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
-        } else {
-            revert RouterAdapter__InvalidId();
-        }
+        if (id == Flags.UNISWAP_V2_ID) amountOut = _swapUV2(pair, flags, amountIn, recipient);
+        else if (id == Flags.LFJ_LEGACY_LIQUIDITY_BOOK_ID) amountOut = _swapLegacyLB(pair, flags, recipient);
+        else if (id == Flags.LFJ_LIQUIDITY_BOOK_ID) amountOut = _swapLB(pair, flags, recipient);
+        else if (id == Flags.UNISWAP_V3_ID) amountOut = _swapUV3(pair, flags, recipient, amountIn, tokenIn);
+        else if (id == Flags.LFJ_TOKEN_MILL_ID) amountOut = _swapTM(pair, flags, recipient, amountIn);
+        else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountOut = _swapTMV2(pair, flags, recipient, amountIn);
+        else if (id == Flags.UNISWAP_V4_ID) amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
+        else revert RouterAdapter__InvalidId();
     }
 
     /* Uniswap V2 */

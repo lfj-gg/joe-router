@@ -135,15 +135,11 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         if (
             from == address(0) || from == address(this) || from == address(forwarderLogic) || from == feeReceiver
                 || from == thirdPartyFeeReceiver
-        ) {
-            from = address(1);
-        }
+        ) from = address(1);
         if (
             to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
                 || to == thirdPartyFeeReceiver
-        ) {
-            to = address(2);
-        }
+        ) to = address(2);
         if (from == to) {
             from = address(1);
             to = address(2);
@@ -204,15 +200,11 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         if (
             from == address(0) || from == address(this) || from == address(forwarderLogic) || from == feeReceiver
                 || from == thirdPartyFeeReceiver
-        ) {
-            from = address(1);
-        }
+        ) from = address(1);
         if (
             to == address(0) || to == address(this) || to == address(forwarderLogic) || to == feeReceiver
                 || to == thirdPartyFeeReceiver
-        ) {
-            to = address(2);
-        }
+        ) to = address(2);
         if (from == to) {
             from = address(1);
             to = address(2);
