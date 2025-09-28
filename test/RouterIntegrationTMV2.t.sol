@@ -77,7 +77,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
                     IRouter.simulate.selector, logic, USDC, TEST, amountIn, 1, alice, true, multiRoutes
                 )
             );
-            assertFalse(success);
+            assertFalse(success, "test_SwapExactInTokenToToken::1");
 
             uint256[] memory values;
 
@@ -85,9 +85,9 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
                 values := add(data, 68)
             }
 
-            assertEq(values.length, 3, "test_SwapExactInTokenToToken::1");
-            assertEq(values[0], values[1], "test_SwapExactInTokenToToken::2");
-            assertEq(values[2], 0, "test_SwapExactInTokenToToken::3");
+            assertEq(values.length, 3, "test_SwapExactInTokenToToken::2");
+            assertEq(values[0], values[1], "test_SwapExactInTokenToToken::3");
+            assertEq(values[2], 0, "test_SwapExactInTokenToToken::4");
 
             expectedOut = values[0];
         }
@@ -96,12 +96,12 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
             router.swapExactIn{value: 0.1e18}(address(logic), USDC, TEST, amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
-        assertEq(totalIn, amountIn, "test_SwapExactInTokenToToken::4");
-        assertGt(totalOut, 0, "test_SwapExactInTokenToToken::5");
-        assertEq(totalOut, expectedOut, "test_SwapExactInTokenToToken::6");
-        assertEq(alice.balance, 0.1e18, "test_SwapExactInTokenToToken::7");
-        assertEq(IERC20(USDC).balanceOf(alice), 0, "test_SwapExactInTokenToToken::8");
-        assertEq(IERC20(TEST).balanceOf(alice), totalOut, "test_SwapExactInTokenToToken::9");
+        assertEq(totalIn, amountIn, "test_SwapExactInTokenToToken::5");
+        assertGt(totalOut, 0, "test_SwapExactInTokenToToken::6");
+        assertEq(totalOut, expectedOut, "test_SwapExactInTokenToToken::7");
+        assertEq(alice.balance, 0.1e18, "test_SwapExactInTokenToToken::8");
+        assertEq(IERC20(USDC).balanceOf(alice), 0, "test_SwapExactInTokenToToken::9");
+        assertEq(IERC20(TEST).balanceOf(alice), totalOut, "test_SwapExactInTokenToToken::10");
     }
 
     function test_SwapExactOutTokenToToken() public {
@@ -144,7 +144,7 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
                     multiRoutes
                 )
             );
-            assertFalse(success);
+            assertFalse(success, "test_SwapExactOutTokenToToken::1");
 
             uint256[] memory values;
 
@@ -152,9 +152,9 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
                 values := add(data, 68)
             }
 
-            assertEq(values.length, 3, "test_SwapExactOutTokenToToken::1");
-            assertEq(values[0], values[1], "test_SwapExactOutTokenToToken::2");
-            assertEq(values[2], type(uint256).max, "test_SwapExactOutTokenToToken::3");
+            assertEq(values.length, 3, "test_SwapExactOutTokenToToken::2");
+            assertEq(values[0], values[1], "test_SwapExactOutTokenToToken::3");
+            assertEq(values[2], type(uint256).max, "test_SwapExactOutTokenToToken::4");
 
             expectedIn = values[0];
         }
@@ -164,12 +164,12 @@ contract RouterIntegrationTMV2Test is Test, PackedRouteHelper {
         );
         vm.stopPrank();
 
-        assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::4");
-        assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToToken::5");
-        assertGe(totalOut, amountOut, "test_SwapExactOutTokenToToken::6");
-        assertEq(alice.balance, 0.1e18, "test_SwapExactOutTokenToToken::7");
-        assertEq(IERC20(TEST).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToToken::8");
-        assertEq(IERC20(USDC).balanceOf(alice), amountOut, "test_SwapExactOutTokenToToken::9");
+        assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::5");
+        assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToToken::6");
+        assertGe(totalOut, amountOut, "test_SwapExactOutTokenToToken::7");
+        assertEq(alice.balance, 0.1e18, "test_SwapExactOutTokenToToken::8");
+        assertEq(IERC20(TEST).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToToken::9");
+        assertEq(IERC20(USDC).balanceOf(alice), amountOut, "test_SwapExactOutTokenToToken::10");
     }
 
     function test_SwapExactInNativeToToken() public {
