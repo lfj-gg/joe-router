@@ -38,10 +38,14 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
      * - The protocolFeeReceiver address must not be the zero address.
      * - The protocolFeeShare must be less than or equal to 10_000 (100%).
      */
-    constructor(address router, address routerV2_0, address protocolFeeReceiver, uint96 protocolFeeShare)
-        RouterAdapter(routerV2_0)
-        FeeAdapter(protocolFeeReceiver, protocolFeeShare)
-    {
+    constructor(
+        address router,
+        address routerV2_0,
+        address uniswapV4Manager,
+        address wnative,
+        address protocolFeeReceiver,
+        uint96 protocolFeeShare
+    ) RouterAdapter(routerV2_0, uniswapV4Manager, wnative) FeeAdapter(protocolFeeReceiver, protocolFeeShare) {
         if (router.code.length == 0) revert RouterLogic__InvalidRouter();
         _router = router;
     }
@@ -155,7 +159,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         }
 
         (uint256 amountInWithFee, uint256[] memory amountsIn) =
-            _getAmountsIn(route, amountOutWithFee, params.nbTokens, params.nbSwaps);
+            _getAmountsIn(amountOutWithFee, params.nbTokens, params.nbSwaps, params.ptr, route);
 
         if (params.feeToken == tokenIn) {
             unchecked {
@@ -234,9 +238,8 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         if (nbTokens < 2) revert RouterLogic__InsufficientTokens();
 
         (uint256 nextPtr, bytes32 value) = PackedRoute.next(route, ptr);
-        uint256 flags = PackedRoute.getFlags(value);
 
-        if (Flags.id(flags) == Flags.FEE_ID) {
+        if (Flags.id(PackedRoute.flags(value)) == Flags.FEE_ID) {
             if (nbSwaps < 2) revert RouterLogic__ZeroSwap();
             unchecked {
                 --nbSwaps;
@@ -271,15 +274,20 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         if (feePtr > 0) {
             (, bytes32 value) = PackedRoute.next(route, feePtr);
 
-            (address recipient, uint256 percent, uint256 flags, uint256 feeTokenId, uint256 feeTokenId_) =
-                PackedRoute.decode(value);
+            // The fee route use the pair field as the allocatee
+            allocatee = PackedRoute.pair(value);
+            feePercent = PackedRoute.percent(value);
 
-            if ((flags | (feeTokenId ^ feeTokenId_)) != 0 || (feeTokenId != 0 && feeTokenId != nbTokens - 1)) {
+            uint256 feeTokenId = PackedRoute.tokenInId(value);
+            feeToken = PackedRoute.token(route, feeTokenId);
+
+            if (
+                (PackedRoute.flags(value) | (feeTokenId ^ PackedRoute.tokenOutId(value))) != 0
+                    || (feeTokenId != 0 && feeTokenId != nbTokens - 1)
+            ) {
                 revert RouterLogic__InvalidFeeData();
             }
-            if (percent == 0 || percent >= BPS) revert RouterLogic__InvalidFeePercent();
-
-            return (PackedRoute.token(route, feeTokenId), recipient, percent);
+            if (feePercent == 0 || feePercent >= BPS) revert RouterLogic__InvalidFeePercent();
         }
     }
 
@@ -293,11 +301,11 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
      * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
      * - The entire balance of all tokens must have been used to calculate the amountIn.
      */
-    function _getAmountsIn(bytes calldata route, uint256 amountOut, uint256 nbTokens, uint256 nbSwaps)
+    function _getAmountsIn(uint256 amountOut, uint256 nbTokens, uint256 nbSwaps, uint256 ptr, bytes calldata route)
         private
         returns (uint256 amountIn, uint256[] memory)
     {
-        uint256 ptr = route.length;
+        ptr = PackedRoute.endPtr(ptr, nbSwaps);
 
         uint256[] memory amountsIn = new uint256[](nbSwaps);
         uint256[] memory balances = new uint256[](nbTokens);
@@ -309,14 +317,15 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         for (uint256 i = nbSwaps; i > 0;) {
             (ptr, value) = PackedRoute.previous(route, ptr);
 
-            (address pair, uint256 percent, uint256 flags, uint256 tokenOutId, uint256 tokenInId) =
-                PackedRoute.decode(value);
+            // Reversing tokenInId and tokenOutId to match the reverse iteration
+            uint256 tokenInId = PackedRoute.tokenOutId(value);
+            uint256 tokenOutId = PackedRoute.tokenInId(value);
 
-            uint256 amount = balances[tokenInId] * percent / BPS;
+            uint256 amount = balances[tokenInId] * PackedRoute.percent(value) / BPS;
             balances[tokenInId] -= amount;
 
             _checkAmount(amount);
-            amountIn = _getAmountIn(pair, flags, amount);
+            amountIn = _getAmountIn(route, value, amount);
             balances[tokenOutId] += amountIn;
             _checkAmount(amountIn);
 
@@ -352,22 +361,22 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         uint256 nbSwaps,
         bytes calldata route
     ) internal returns (uint256 amountOut) {
-        uint256[] memory balances = new uint256[](nbTokens);
+        unchecked {
+            uint256[] memory balances = new uint256[](nbTokens);
+            uint256 lastTokenId = nbTokens - 1;
 
-        balances[0] = amountIn;
-        uint256 total = amountIn;
+            balances[0] = amountIn;
 
-        bytes32 value;
-        for (uint256 i; i < nbSwaps; i++) {
-            (ptr, value) = PackedRoute.next(route, ptr);
+            bytes32 value;
+            for (uint256 i; i < nbSwaps; i++) {
+                (ptr, value) = PackedRoute.next(route, ptr);
 
-            unchecked {
-                total += _swapExactInSingle(route, balances, from, recipient, value);
+                amountIn += _swapExactInSingle(lastTokenId, route, balances, from, recipient, value);
             }
-        }
 
-        amountOut = balances[nbTokens - 1];
-        if (total != amountOut) revert RouterLogic__ExcessBalanceUnused();
+            amountOut = balances[lastTokenId];
+            if (amountIn != amountOut) revert RouterLogic__ExcessBalanceUnused();
+        }
     }
 
     /**
@@ -404,25 +413,27 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
      * - Each swap amountIn and amountOut must be greater than zero and less than 2^128.
      */
     function _swapExactInSingle(
+        uint256 lastTokenId,
         bytes calldata route,
         uint256[] memory balances,
         address from,
         address to,
         bytes32 value
     ) private returns (uint256) {
-        (address pair, uint256 percent, uint256 flags, uint256 tokenInId, uint256 tokenOutId) =
-            PackedRoute.decode(value);
+        uint256 flags = PackedRoute.flags(value);
+        uint256 tokenInId = PackedRoute.tokenInId(value);
+        uint256 tokenOutId = PackedRoute.tokenOutId(value);
+        address recipient = tokenOutId == lastTokenId ? to : address(this);
 
-        uint256 amountIn = balances[tokenInId] * percent / BPS;
+        uint256 amountIn = balances[tokenInId] * PackedRoute.percent(value) / BPS;
         balances[tokenInId] -= amountIn;
 
-        (address tokenIn, uint256 actualAmountIn) =
-            _transferFromTokenId(route, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
-
-        address recipient = tokenOutId == balances.length - 1 ? to : address(this);
+        (address tokenIn, uint256 actualAmountIn) = _transferFromTokenId(
+            route, tokenInId, from, Flags.callback(flags) ? address(this) : PackedRoute.pair(value), amountIn
+        );
 
         _checkAmount(actualAmountIn);
-        uint256 amountOut = _swap(pair, tokenIn, actualAmountIn, recipient, flags);
+        uint256 amountOut = _swap(route, value, tokenIn, actualAmountIn, recipient, flags);
         _checkAmount(amountOut);
 
         balances[tokenOutId] += amountOut;
@@ -446,14 +457,16 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         bytes32 value,
         uint256 amountIn
     ) private {
-        (address pair,, uint256 flags, uint256 tokenInId, uint256 tokenOutId) = PackedRoute.decode(value);
+        address pair = PackedRoute.pair(value);
+        uint256 flags = PackedRoute.flags(value);
 
-        (address tokenIn, uint256 actualAmountIn) =
-            _transferFromTokenId(route, tokenInId, from, Flags.callback(flags) ? address(this) : pair, amountIn);
+        (address tokenIn, uint256 actualAmountIn) = _transferFromTokenId(
+            route, PackedRoute.tokenInId(value), from, Flags.callback(flags) ? address(this) : pair, amountIn
+        );
 
-        address recipient = tokenOutId == nbTokens - 1 ? to : address(this);
+        address recipient = PackedRoute.tokenOutId(value) == nbTokens - 1 ? to : address(this);
 
-        _swap(pair, tokenIn, actualAmountIn, recipient, flags);
+        _swap(route, value, tokenIn, actualAmountIn, recipient, flags);
     }
 
     /**

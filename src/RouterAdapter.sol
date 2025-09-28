@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Flags} from "./libraries/Flags.sol";
+import {PackedRoute} from "./libraries/PackedRoute.sol";
 import {PairInteraction} from "./libraries/PairInteraction.sol";
 import {TokenLib} from "./libraries/TokenLib.sol";
 
@@ -17,16 +18,29 @@ abstract contract RouterAdapter {
     error RouterAdapter__InsufficientTMV2Liquidity();
     error RouterAdapter__UnexpectedCallback();
     error RouterAdapter__UnexpectedAmountIn();
+    error RouterAdapter__OnlyWnative();
 
     address private immutable _routerV2_0;
+    address private immutable _uniswapV4;
+    address private immutable _wnative;
 
     uint256 private _callbackData = 0xdead;
 
     /**
      * @dev Constructor for the RouterAdapter contract.
      */
-    constructor(address routerV2_0) {
+    constructor(address routerV2_0, address uniswapV4Manager, address wnative) {
         _routerV2_0 = routerV2_0;
+        _wnative = wnative;
+        _uniswapV4 = uniswapV4Manager;
+    }
+
+    /**
+     * @dev Allows the contract to receive native tokens and wrap them, unless it's from the wrapped native
+     * token contract itself, then it just accepts the native tokens.
+     */
+    receive() external payable {
+        if (msg.sender != _wnative) TokenLib.wrap(_wnative, msg.value);
     }
 
     /**
@@ -36,14 +50,15 @@ abstract contract RouterAdapter {
      * - The callback data must have been set to `pair << 96 | PAIR_ID` before the callback, otherwise revert with
      * `RouterAdapter__UnexpectedCallback()`.
      */
-    fallback() external {
+    fallback(bytes calldata data) external returns (bytes memory) {
         uint256 callbackData = _callbackData;
         uint256 id = Flags.id(callbackData);
+        address account = address(uint160(callbackData >> 96));
 
-        if (msg.sender == address(uint160(callbackData >> 96))) {
-            if (id == Flags.UNISWAP_V3_ID) {
-                return _uniswapV3SwapCallback(msg.data);
-            }
+        if (id == Flags.UNISWAP_V3_ID) {
+            if (msg.sender == account) return _uniswapV3SwapCallback(data);
+        } else if (id == Flags.UNISWAP_V4_ID) {
+            if (msg.sender == _uniswapV4) return _uniswapV4UnlockCallback(data, account);
         }
 
         assembly ("memory-safe") {
@@ -58,7 +73,10 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The id of the flags must be valid and not the FEE_ID.
      */
-    function _getAmountIn(address pair, uint256 flags, uint256 amountOut) internal returns (uint256 amountIn) {
+    function _getAmountIn(bytes calldata route, bytes32 value, uint256 amountOut) internal returns (uint256 amountIn) {
+        address pair = PackedRoute.pair(value);
+        uint256 flags = PackedRoute.flags(value);
+
         uint256 id = Flags.id(flags);
 
         if (id == Flags.UNISWAP_V2_ID) {
@@ -73,6 +91,8 @@ abstract contract RouterAdapter {
             amountIn = _getAmountInTM(pair, flags, amountOut);
         } else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) {
             amountIn = _getAmountInTMV2(pair, flags, amountOut);
+        } else if (id == Flags.UNISWAP_V4_ID) {
+            amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -84,10 +104,15 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The id of the flags must be valid and not the FEE_ID.
      */
-    function _swap(address pair, address tokenIn, uint256 amountIn, address recipient, uint256 flags)
-        internal
-        returns (uint256 amountOut)
-    {
+    function _swap(
+        bytes calldata route,
+        bytes32 value,
+        address tokenIn,
+        uint256 amountIn,
+        address recipient,
+        uint256 flags
+    ) internal returns (uint256 amountOut) {
+        address pair = PackedRoute.pair(value);
         uint256 id = Flags.id(flags);
 
         if (id == Flags.UNISWAP_V2_ID) {
@@ -102,6 +127,8 @@ abstract contract RouterAdapter {
             amountOut = _swapTM(pair, flags, recipient, amountIn);
         } else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) {
             amountOut = _swapTMV2(pair, flags, recipient, amountIn);
+        } else if (id == Flags.UNISWAP_V4_ID) {
+            amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
         } else {
             revert RouterAdapter__InvalidId();
         }
@@ -208,12 +235,13 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The caller must be the callback address.
      */
-    function _uniswapV3SwapCallback(bytes calldata data) internal {
+    function _uniswapV3SwapCallback(bytes calldata data) internal returns (bytes memory) {
         (int256 amount0Delta, int256 amount1Delta, address token) = PairInteraction.decodeUV3CallbackData(data);
 
         _callbackData = PairInteraction.hashUV3(amount0Delta, amount1Delta, token);
 
         TokenLib.transfer(token, msg.sender, uint256(amount0Delta > 0 ? amount0Delta : amount1Delta));
+        return new bytes(0);
     }
 
     /* Token Mill */
@@ -260,5 +288,46 @@ abstract contract RouterAdapter {
 
         if (actualAmountIn != amountIn) revert RouterAdapter__InsufficientTMV2Liquidity();
         return amountOut;
+    }
+
+    function _getAmountInUV4(bytes calldata route, bytes32 value, address pair, uint256 flags, uint256 amountOut)
+        internal
+        returns (uint256)
+    {
+        _callbackData = Flags.UNISWAP_V4_ID;
+
+        // Use pair as the dataOffset
+        return PairInteraction.getSwapInUV4(route, value, _uniswapV4, pair, Flags.zeroForOne(flags), amountOut);
+    }
+
+    function _swapUV4(
+        bytes calldata route,
+        bytes32 value,
+        address pair,
+        uint256 flags,
+        address recipient,
+        uint256 amountIn
+    ) internal returns (uint256) {
+        _callbackData = (uint256(uint160(recipient)) << 96) | Flags.UNISWAP_V4_ID;
+
+        (uint256 amountOut, uint256 actualAmountIn) =
+            PairInteraction.swapUV4(route, value, _uniswapV4, pair, Flags.zeroForOne(flags), amountIn);
+
+        _callbackData = 0xdead;
+
+        if (actualAmountIn != amountIn) revert RouterAdapter__UnexpectedAmountIn();
+
+        return amountOut;
+    }
+
+    /**
+     * @dev Callback function for Uniswap V4 unlocks.
+     *
+     * Requirements:
+     * - The caller must be the callback address.
+     */
+    function _uniswapV4UnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
+        (int256 delta0, int256 delta1) = PairInteraction.swapUV4Callback(data, recipient, _wnative);
+        return abi.encode(0x20, 0x40, delta0, delta1);
     }
 }
