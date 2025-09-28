@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {StdChains, Test} from "forge-std/Test.sol";
 
-import "../src/ForwarderLogic.sol";
-import "../src/Router.sol";
-import "./mocks/MockERC20.sol";
+import {ForwarderLogic} from "../src/ForwarderLogic.sol";
+import {IRouter, Router} from "../src/Router.sol";
 
 contract ForwarderLogicIntegrationTest is Test {
     Router public router;

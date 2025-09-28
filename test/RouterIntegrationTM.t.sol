@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {StdChains, Test} from "forge-std/Test.sol";
 
-import "../src/Router.sol";
-import "../src/RouterLogic.sol";
-import "./PackedRouteHelper.sol";
-import "./interfaces/ITMPair.sol";
-import "./mocks/MockERC20.sol";
+import {IRouter, Router} from "../src/Router.sol";
+import {RouterAdapter, RouterLogic} from "../src/RouterLogic.sol";
+import {PackedRouteHelper} from "./PackedRouteHelper.sol";
+import {ITMPair} from "./interfaces/ITMPair.sol";
 
 contract RouterIntegrationTMTest is Test, PackedRouteHelper {
     Router public router;
@@ -21,7 +21,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
 
     address public LB1_AVAX_USDC = 0xD446eb1660F766d533BeCeEf890Df7A69d26f7d1;
 
-    address public UV3_AVAX_USDC = 0xfAe3f424a0a47706811521E3ee268f00cFb5c45E;
+    address public UV3AVAX_USDC = 0xfAe3f424a0a47706811521E3ee268f00cFb5c45E;
 
     address public TM_CHAMP_AVAX = 0xE8e45d1866efe193268Ba3820a52717A2645d78C;
 
@@ -42,7 +42,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         vm.label(USDC, "USDC");
         vm.label(TJ1_AVAX_USDC, "TJ1_AVAX_USDC");
         vm.label(LB1_AVAX_USDC, "LB1_AVAX_USDC");
-        vm.label(UV3_AVAX_USDC, "UV3_AVAX_USDC");
+        vm.label(UV3AVAX_USDC, "UV3AVAX_USDC");
     }
 
     function test_SwapExactInTokenToToken() public {
@@ -60,7 +60,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
 
         ptr = _setRoute(route, ptr, USDC, WAVAX, TJ1_AVAX_USDC, 0.2e4, TJ1_ID | ONE_FOR_ZERO);
         ptr = _setRoute(route, ptr, USDC, WAVAX, LB1_AVAX_USDC, 0.7e4, LB12_ID | ONE_FOR_ZERO);
-        ptr = _setRoute(route, ptr, USDC, WAVAX, UV3_AVAX_USDC, 1e4, UV3_ID | CALLBACK | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDC, WAVAX, UV3AVAX_USDC, 1e4, UV3ID | CALLBACK | ONE_FOR_ZERO);
         ptr = _setRoute(route, ptr, WAVAX, CHAMP, TM_CHAMP_AVAX, 1e4, TM_ID | ONE_FOR_ZERO);
 
         vm.startPrank(alice);
@@ -73,11 +73,12 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector, logic, USDC, CHAMP, amountIn, 1, alice, true, multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 
@@ -121,7 +122,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         ptr = _setRoute(route, ptr, CHAMP, WAVAX, TM_CHAMP_AVAX, 1.0e4, TM_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, USDC, TJ1_AVAX_USDC, 1e4, TJ1_ID | ZERO_FOR_ONE);
         ptr = _setRoute(route, ptr, WAVAX, USDC, LB1_AVAX_USDC, 0.74e4, LB12_ID | ZERO_FOR_ONE);
-        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3_AVAX_USDC, 0.24e4, UV3_ID | CALLBACK | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WAVAX, USDC, UV3AVAX_USDC, 0.24e4, UV3ID | CALLBACK | ZERO_FOR_ONE);
 
         vm.startPrank(alice);
         IERC20(CHAMP).approve(address(router), maxAmountIn);
@@ -133,7 +134,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector,
                     logic,
@@ -146,6 +147,7 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
                     multiRoutes
                 )
             );
+            assertFalse(success);
 
             uint256[] memory values;
 

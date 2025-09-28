@@ -28,7 +28,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         address recipient;
     }
 
-    address private immutable _router;
+    address private immutable ROUTER;
 
     /**
      * @dev Constructor for the RouterLogic contract.
@@ -47,7 +47,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         uint96 protocolFeeShare
     ) RouterAdapter(routerV2_0, uniswapV4Manager, wnative) FeeAdapter(protocolFeeReceiver, protocolFeeShare) {
         if (router.code.length == 0) revert RouterLogic__InvalidRouter();
-        _router = router;
+        ROUTER = router;
     }
 
     /**
@@ -203,7 +203,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
      * - The sender must be the router's owner.
      */
     function _checkSender() internal view override {
-        if (msg.sender != Ownable(_router).owner()) revert RouterLogic__OnlyRouterOwner();
+        if (msg.sender != Ownable(ROUTER).owner()) revert RouterLogic__OnlyRouterOwner();
     }
 
     /**
@@ -231,7 +231,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         view
         returns (uint256 feePtr, uint256 ptr, uint256 nbTokens, uint256 nbSwaps)
     {
-        if (msg.sender != _router) revert RouterLogic__OnlyRouter();
+        if (msg.sender != ROUTER) revert RouterLogic__OnlyRouter();
 
         (ptr, nbTokens, nbSwaps) = PackedRoute.start(route);
 
@@ -489,7 +489,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
             bool isTransferTax = PackedRoute.isTransferTax(route);
 
             uint256 balance = isTransferTax ? TokenLib.balanceOf(token, to) : 0;
-            RouterLib.transfer(_router, token, from, to, amount);
+            RouterLib.transfer(ROUTER, token, from, to, amount);
             amount = isTransferTax ? TokenLib.balanceOf(token, to) - balance : amount;
         } else if (to != address(this)) {
             TokenLib.transfer(token, to, amount);
@@ -507,7 +507,7 @@ contract RouterLogic is FeeAdapter, RouterAdapter, IRouterLogic {
         if (from == address(this)) {
             TokenLib.transfer(token, to, amount);
         } else {
-            RouterLib.transfer(_router, token, from, to, amount);
+            RouterLib.transfer(ROUTER, token, from, to, amount);
         }
     }
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../../src/libraries/Flags.sol";
+import {Flags} from "../../src/libraries/Flags.sol";
 
 contract FlagsTest is Test {
     function test_Fuzz_ZeroForOne(uint256 flags) public pure {

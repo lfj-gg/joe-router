@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../src/Router.sol";
-import "../src/RouterLogic.sol";
-import "./mocks/MockERC20.sol";
-import "./mocks/MockTaxToken.sol";
-import "./mocks/WNative.sol";
+import {IRouter, Router} from "../src/Router.sol";
+import {IRouterLogic} from "../src/interfaces/IRouterLogic.sol";
+import {RouterLib} from "../src/libraries/RouterLib.sol";
+import {TokenLib} from "../src/libraries/TokenLib.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockTaxToken} from "./mocks/MockTaxToken.sol";
+import {WNative} from "./mocks/WNative.sol";
 
 contract RouterTest is Test {
     MockERC20 public token0;
@@ -135,7 +137,7 @@ contract RouterTest is Test {
         bytes memory route = abi.encode(amountIn, amountOutMin);
 
         wnative.deposit{value: amountIn}();
-        wnative.transfer(alice, amountIn);
+        TokenLib.transfer(address(wnative), alice, amountIn);
 
         vm.startPrank(alice);
         wnative.approve(address(router), amountIn);
@@ -175,7 +177,7 @@ contract RouterTest is Test {
         token0.mint(alice, amountIn);
 
         wnative.deposit{value: amountOutMin}();
-        wnative.transfer(address(routerLogic), amountOutMin);
+        TokenLib.transfer(address(wnative), address(routerLogic), amountOutMin);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -197,7 +199,7 @@ contract RouterTest is Test {
         token0.mint(alice, amountIn);
 
         wnative.deposit{value: amountOutMin}();
-        wnative.transfer(address(routerLogic), amountOutMin);
+        TokenLib.transfer(address(wnative), address(routerLogic), amountOutMin);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountIn);
@@ -236,7 +238,7 @@ contract RouterTest is Test {
         bytes memory route = abi.encode(amountInMax, amountOut);
 
         wnative.deposit{value: amountInMax}();
-        wnative.transfer(alice, amountInMax);
+        TokenLib.transfer(address(wnative), alice, amountInMax);
 
         vm.startPrank(alice);
         wnative.approve(address(router), amountInMax);
@@ -276,7 +278,7 @@ contract RouterTest is Test {
         token0.mint(alice, amountInMax);
 
         wnative.deposit{value: amountOut}();
-        wnative.transfer(address(routerLogic), amountOut);
+        TokenLib.transfer(address(wnative), address(routerLogic), amountOut);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -298,7 +300,7 @@ contract RouterTest is Test {
         token0.mint(alice, amountInMax);
 
         wnative.deposit{value: amountOut}();
-        wnative.transfer(address(routerLogic), amountOut);
+        TokenLib.transfer(address(wnative), address(routerLogic), amountOut);
 
         vm.startPrank(alice);
         token0.approve(address(router), amountInMax);
@@ -363,7 +365,7 @@ contract RouterTest is Test {
         token0.mint(alice, 10e18);
 
         wnative.deposit{value: 1e18}();
-        wnative.transfer(address(routerLogic), 1e18);
+        TokenLib.transfer(address(wnative), address(routerLogic), 1e18);
 
         bytes memory route = abi.encode(10e18, 1e18);
 
@@ -428,7 +430,7 @@ contract RouterTest is Test {
         token0.mint(alice, 10e18);
 
         wnative.deposit{value: 1e18}();
-        wnative.transfer(address(routerLogic), 1e18);
+        TokenLib.transfer(address(wnative), address(routerLogic), 1e18);
 
         bytes memory route = abi.encode(10e18, 1e18);
 

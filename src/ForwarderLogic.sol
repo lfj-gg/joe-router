@@ -19,7 +19,7 @@ contract ForwarderLogic is FeeAdapter, IForwarderLogic {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
-    address private immutable _router;
+    address private immutable ROUTER;
 
     EnumerableSet.AddressSet private _trustedRouter;
     mapping(address => bool) private _blacklist;
@@ -28,7 +28,7 @@ contract ForwarderLogic is FeeAdapter, IForwarderLogic {
         FeeAdapter(protocolFeeReceiver, protocolFeeShare)
     {
         if (router == address(0)) revert ForwarderLogic__InvalidRouter();
-        _router = router;
+        ROUTER = router;
     }
 
     /**
@@ -74,10 +74,10 @@ contract ForwarderLogic is FeeAdapter, IForwarderLogic {
         address to,
         bytes calldata data
     ) external override returns (uint256, uint256) {
-        if (msg.sender != _router) revert ForwarderLogic__OnlyRouter();
+        if (msg.sender != ROUTER) revert ForwarderLogic__OnlyRouter();
         if (_blacklist[from] || (from != to && _blacklist[to])) revert ForwarderLogic__Blacklisted();
 
-        RouterLib.transfer(_router, tokenIn, from, address(this), amountIn);
+        RouterLib.transfer(ROUTER, tokenIn, from, address(this), amountIn);
 
         uint256 feePercent = uint256(uint16(bytes2(data[40:42])));
         (uint256 isFeeTokenIn, address allocatee, bytes memory routerData) = feePercent == 0
@@ -180,7 +180,7 @@ contract ForwarderLogic is FeeAdapter, IForwarderLogic {
      * - The sender must be the router's owner.
      */
     function _checkSender() internal view override {
-        if (msg.sender != Ownable(_router).owner()) revert ForwarderLogic__OnlyRouterOwner();
+        if (msg.sender != Ownable(ROUTER).owner()) revert ForwarderLogic__OnlyRouterOwner();
     }
 
     /**

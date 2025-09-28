@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
-
-import "./ForwarderLogicIntegration.t.sol";
+import {ForwarderLogicIntegrationTest} from "./ForwarderLogicIntegration.t.sol";
 
 contract ForwarderLogicIntegration100PercentTest is ForwarderLogicIntegrationTest {
     function setUp() public override {

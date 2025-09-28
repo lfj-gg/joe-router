@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {StdChains, Test} from "forge-std/Test.sol";
 
-import "../src/Router.sol";
-import "../src/RouterLogic.sol";
-import "./PackedRouteHelper.sol";
-import "./mocks/MockERC20.sol";
+import {Router} from "../src/Router.sol";
+import {RouterLogic} from "../src/RouterLogic.sol";
+import {PackedRouteHelper} from "./PackedRouteHelper.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
 
 /// forge-config: default.evm_version = "cancun"
 contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
@@ -20,14 +21,14 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
     address public USDT = 0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7;
     address public USDC = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
 
-    uint24 public UV4_WAVAX_USDC_FEE = 0.05e4;
-    int24 public UV4_WAVAX_USDC_TICK_SPACING = 10;
+    uint24 public UV4WAVAX_USDC_FEE = 0.05e4;
+    int24 public UV4WAVAX_USDC_TICK_SPACING = 10;
 
-    uint24 public UV4_WAVAX_USDT_FEE = 0.3e4;
-    int24 public UV4_WAVAX_USDT_TICK_SPACING = 60;
+    uint24 public UV4WAVAX_USDT_FEE = 0.3e4;
+    int24 public UV4WAVAX_USDT_TICK_SPACING = 60;
 
-    uint24 public UV4_USDT_USDC_FEE = 0.0032e4;
-    int24 public UV4_USDT_USDC_TICK_SPACING = 1;
+    uint24 public UV4USDT_USDC_FEE = 0.0032e4;
+    int24 public UV4USDT_USDC_TICK_SPACING = 1;
 
     address public NO_HOOKS = address(0);
 
@@ -71,11 +72,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDC_FEE,
-                tickSpacing: UV4_WAVAX_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_OUT,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDC_FEE,
+                tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_OUT,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -87,11 +88,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDT,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDT_FEE,
-                tickSpacing: UV4_WAVAX_USDT_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_IN,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDT_FEE,
+                tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_IN,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -132,11 +133,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDT_FEE,
-                tickSpacing: UV4_WAVAX_USDT_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_OUT,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDT_FEE,
+                tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_OUT,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -148,11 +149,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDC_FEE,
-                tickSpacing: UV4_WAVAX_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_IN,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDC_FEE,
+                tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_IN,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -192,11 +193,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDC_FEE,
-                tickSpacing: UV4_WAVAX_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_IN,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDC_FEE,
+                tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_IN,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -208,11 +209,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             USDT,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_USDT_USDC_FEE,
-                tickSpacing: UV4_USDT_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_NONE,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4USDT_USDC_FEE,
+                tickSpacing: UV4USDT_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_NONE,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -251,11 +252,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDT,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDT_FEE,
-                tickSpacing: UV4_WAVAX_USDT_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_IN,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDT_FEE,
+                tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_IN,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -267,11 +268,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_USDT_USDC_FEE,
-                tickSpacing: UV4_USDT_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_NONE,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4USDT_USDC_FEE,
+                tickSpacing: UV4USDT_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_NONE,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -311,11 +312,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             USDT,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_USDT_USDC_FEE,
-                tickSpacing: UV4_USDT_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_NONE,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4USDT_USDC_FEE,
+                tickSpacing: UV4USDT_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_NONE,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -327,11 +328,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDT_FEE,
-                tickSpacing: UV4_WAVAX_USDT_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_OUT,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDT_FEE,
+                tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_OUT,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -372,11 +373,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_USDT_USDC_FEE,
-                tickSpacing: UV4_USDT_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_NONE,
+            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4USDT_USDC_FEE,
+                tickSpacing: UV4USDT_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_NONE,
                 hooks: NO_HOOKS,
                 hookData: ""
             })
@@ -388,11 +389,11 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4_ID | CALLBACK,
-            ExtraDataUV4({
-                fee: UV4_WAVAX_USDC_FEE,
-                tickSpacing: UV4_WAVAX_USDC_TICK_SPACING,
-                nativeFlag: UV4_NATIVE_FLAG_OUT,
+            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ExtraDataUniswapV4({
+                fee: UV4WAVAX_USDC_FEE,
+                tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
+                nativeFlag: UV4NATIVE_FLAG_OUT,
                 hooks: NO_HOOKS,
                 hookData: ""
             })

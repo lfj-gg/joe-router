@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
-import "../../src/RouterAdapter.sol";
-import "../../src/libraries/PairInteraction.sol";
-import "../PackedRouteHelper.sol";
-import "../interfaces/ILBPair.sol";
-import "../interfaces/ILegacyLBPair.sol";
-import "../interfaces/ILegacyLBRouter.sol";
-import "../interfaces/ITMPair.sol";
-import "../interfaces/ITMPairV2.sol";
-import "../interfaces/IUV2Pair.sol";
-import "../interfaces/IUV3Pair.sol";
-import "../interfaces/IUV4Manager.sol";
+import {PairInteraction} from "../../src/libraries/PairInteraction.sol";
+import {TokenLib} from "../../src/libraries/TokenLib.sol";
+import {PackedRoute, PackedRouteHelper} from "../PackedRouteHelper.sol";
+import {ILBPair} from "../interfaces/ILBPair.sol";
+import {ILegacyLBPair} from "../interfaces/ILegacyLBPair.sol";
+import {ITMPair} from "../interfaces/ITMPair.sol";
+import {ITMPairV2} from "../interfaces/ITMPairV2.sol";
+import {IUV2Pair} from "../interfaces/IUV2Pair.sol";
+import {IUV3Pair} from "../interfaces/IUV3Pair.sol";
+import {IUV4Manager} from "../interfaces/IUV4Manager.sol";
 
-import "../mocks/MockERC20.sol";
-import "../mocks/MockV4Manager.sol";
-import "../mocks/WNative.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {MockV4Manager} from "../mocks/MockV4Manager.sol";
+import {WNative} from "../mocks/WNative.sol";
 
 contract PairInteractionTest is Test, PackedRouteHelper {
     error CustomError();
@@ -626,7 +625,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
             tokenOut,
             address(uint160(extraDataPtr)),
             1e4,
-            UV4_ID | CALLBACK | (zeroForOne ? ZERO_FOR_ONE : ONE_FOR_ZERO)
+            UV4ID | CALLBACK | (zeroForOne ? ZERO_FOR_ONE : ONE_FOR_ZERO)
         );
         route = abi.encodePacked(
             route,

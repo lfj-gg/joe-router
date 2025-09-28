@@ -154,6 +154,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
         uint256[] memory amounts = new uint256[](length);
         for (uint256 i; i < length;) {
+            /// forge-lint: disable-start(unchecked-call)
             (, bytes memory data) = address(this).delegatecall(
                 abi.encodeWithSelector(
                     IRouter.simulateSingle.selector,
@@ -167,6 +168,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
                     multiRoutes[i++]
                 )
             );
+            /// forge-lint: disable-end(unchecked-call)
 
             if (bytes4(data) == IRouter.Router__SimulateSingle.selector) {
                 assembly ("memory-safe") {
