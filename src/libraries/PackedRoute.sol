@@ -21,14 +21,17 @@ pragma solidity ^0.8.20;
  * The flags are encoded as 16 bits unsigned integer. They contain the dex id and information for the swap. See the
  *     Flags library for more information.
  * The token ids are encoded as 8 bits unsigned integer. They must match the id of the token in the token list.
- * All the values are packed in a bytes array each time using the least amount of bytes possible (in solidity, use abi.encodePacked).
+ * All the values are packed in a bytes array each time using the least amount of bytes possible (in solidity,
+ *     use abi.encodePacked).
  * The extraData is an optional field that can be used to store additional data for the route. It must be at the end of
- *     the route and **MUST** have an even length (multiple of 2 bytes). This is to avoid the extra data to be taken as a route.
+ *     the route and **MUST** have an even length (multiple of 2 bytes).
+ *     This is to avoid the extra data to be taken as a route.
  * Currently, only Uniswap V4 requires extra data for its swaps, they must be encoded as follows:
  *     [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable]
  *     The hookData length **MUST** be even (multiple of 2 bytes).
- * The extraDataLength is a 3 bytes unsigned integer that indicates the length of the extra data. It is appended at the end of the route.
- *     It is used to know where the extra data starts and ends. If there is no extra data, this field should be omitted.
+ * The extraDataLength is a 3 bytes unsigned integer that indicates the length of the extra data. It is appended at the
+ *     end of the route. It is used to know where the extra data starts and ends. If there is no extra data,
+ *     this field should be omitted.
  * Example 1, swapExactIn:
  * User wants to swap X WETH to USDT using the following route:
  *
@@ -71,7 +74,8 @@ pragma solidity ^0.8.20;
  * {LB2.0-WAVAX/USDT,  3000,            LB2_0_ID | ZERO_FOR_ONE, 1, 4}
  * {LB2.2-USDC/USDT,   4000,            LB2_2_ID | ZERO_FOR_ONE, 2, 4}
  *
- * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token balance.
+ * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token
+ * balance.
  *
  * UNIV3-WETH/WAVAX = 0.8
  * LB2.1-WETH/USDC = 0.2 / (1 - 0.8) = 1.0 (we force it to 1 as it's the last swap from WETH)
@@ -153,7 +157,8 @@ pragma solidity ^0.8.20;
  * {LB2.2-USDC/USDT,   3000,             LB2_2_ID | ZERO_FOR_ONE, 2, 4}
  * {LB2.0-WAVAX/USDT,  2400,             LB2_0_ID | ZERO_FOR_ONE, 1, 4}
  *
- * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token balance.
+ * Now we have to recalculate the percents, as the amountIn is calculated using the percent of the remaining token
+ * balance.
  * We start from the last token, USDT, and up to the first token, WETH.
  *
  * LB2.0-WAVAX/USDT = 0.24
@@ -184,7 +189,9 @@ library PackedRoute {
     uint256 internal constant TOKENS_OFFSET = 2;
     uint256 internal constant ROUTE_SIZE = 26;
     uint256 internal constant ADDRESS_SIZE = 20;
-    uint256 internal constant EXTRA_DATA_LENGTH_SIZE = 3; // Up to 16777215 bytes of extra data. Extra data must be at the end of the route and have an even length.
+
+    // Extra data must be at the end of the route and have an even length.
+    uint256 internal constant EXTRA_DATA_LENGTH_SIZE = 3; // Up to 16777215 bytes of extra data.
     uint256 internal constant EXTRA_DATA_LENGTH_SHIFT = 232; // 256 - EXTRA_DATA_LENGTH_SIZE * 8
 
     uint256 internal constant IS_TRANSFER_TAX_SHIFT = 248;
@@ -221,7 +228,8 @@ library PackedRoute {
     /**
      * @dev Returns the number of tokens, the number of swaps, and the offset to the first swap.
      * If the route is not of the correct length, the function will revert with `PackedRoute__InvalidLength`.
-     * For the route to be valid, its length must equal `TOKENS_OFFSET + nbTokens * ADDRESS_SIZE + nbSwaps * ROUTE_SIZE`.
+     * For the route to be valid, its length must equal
+     * `TOKENS_OFFSET + nbTokens * ADDRESS_SIZE + nbSwaps * ROUTE_SIZE`.
      */
     function start(bytes calldata route) internal pure returns (uint256 ptr, uint256 nbTokens, uint256 nbSwaps) {
         assembly ("memory-safe") {

@@ -9,6 +9,7 @@ optimizer_runs = 1000000
 [fmt]
 sort_imports = true
 single_line_statement_blocks = "preserve"
+wrap_comments = true
 
 [lint]
 exclude_lints = ["mixed-case-function", "mixed-case-variable"]

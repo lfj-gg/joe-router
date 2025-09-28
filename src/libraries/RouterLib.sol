@@ -116,7 +116,8 @@ library RouterLib {
      * Requirements:
      * - The logic contract must not be the zero address.
      * - The call must succeed.
-     * - The logic contract must call this contract's fallback function to validate the allowance and transfer the tokens.
+     * - The logic contract must call this contract's fallback function to validate the allowance and transfer the
+     *   tokens.
      */
     function swap(
         mapping(bytes32 key => uint256) storage allowances,

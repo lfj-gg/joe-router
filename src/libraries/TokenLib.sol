@@ -43,7 +43,8 @@ library TokenLib {
     }
 
     /**
-     * @dev Returns the balance of a token for an account, or the native balance of the account if the token is the native token.
+     * @dev Returns the balance of a token for an account, or the native balance of the account if the token is the
+     * native token.
      *
      * Requirements:
      * - The call must succeed (if the token is not the native token).

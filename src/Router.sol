@@ -22,8 +22,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     EnumerableSet.AddressSet private _trustedLogics;
 
     /**
-     * @dev The allowances represent the maximum amount of tokens that the logic contract can spend on behalf of the sender.
-     * It is always reseted at the end of the swap.
+     * @dev The allowances represent the maximum amount of tokens that the logic contract can spend on
+     * behalf of the sender. It is always reseted at the end of the swap.
      * The key is calculated as keccak256(abi.encodePacked(token, sender, user)).
      */
     mapping(bytes32 key => uint256 allowance) private _allowances;
@@ -69,9 +69,10 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     }
 
     /**
-     * @dev Swaps tokens from the sender to the recipient using the exact input amount. It will use the specified logic contract.
-     * WARNING: The route is not validated and could contain malicious data. The caller must ensure that the route is valid
-     * and does not lead to unexpected behavior.
+     * @dev Swaps tokens from the sender to the recipient using the exact input amount.
+     * It will use the specified logic contract.
+     * WARNING: The route is not validated and could contain malicious data.
+     *          The caller must ensure that the route is valid and does not lead to unexpected behavior.
      *
      * Emits a {SwapExactIn} event.
      *
@@ -104,9 +105,10 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     }
 
     /**
-     * @dev Swaps tokens from the sender to the recipient using the exact output amount. It will use the specified logic contract.
-     * WARNING: The route is not validated and could contain malicious data. The caller must ensure that the route is valid
-     * and does not lead to unexpected behavior.
+     * @dev Swaps tokens from the sender to the recipient using the exact output amount.
+     * It will use the specified logic contract.
+     * WARNING: The route is not validated and could contain malicious data.
+     *          The caller must ensure that the route is valid and does not lead to unexpected behavior.
      *
      * Emits a {SwapExactOut} event.
      *

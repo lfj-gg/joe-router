@@ -574,10 +574,13 @@ library PairInteraction {
      * The extraData must have an even length.
      * Requirements:
      * - The extra data must be formatted as follows:
-     *   [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable] (30 bytes + hookData length)
-     *   - The fee is the fee of the pool in hundredths of a bip, i.e. 1e-6. If the highest bit is 1, the pool has a dynamic fee and must be exactly equal to 0x800000
+     *   [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3][hookData: variable]
+     *   (30 bytes + hookData length)
+     *   - The fee is the fee of the pool in hundredths of a bip, i.e. 1e-6. If the highest bit is 1,
+     *     the pool has a dynamic fee and must be exactly equal to 0x800000
      *   - The tickSpacing is the pool tick spacing.
-     *   - The nativeFlag indicates if one of the tokens is native (1: tokenIn is native, 2: tokenOut is native, otherwise both are ERC20).
+     *   - The nativeFlag indicates if one of the tokens is native
+     *     (1: tokenIn is native, 2: tokenOut is native, otherwise both are ERC20).
      *   - The hooks is the address of the hooks contract.
      *   - The hookData length is the length of the hookData in bytes (must be an even number for safety)
      *   - The hookData is the data to be passed to the hooks contract (can be empty).
@@ -613,7 +616,8 @@ library PairInteraction {
             // Total length = 32 * 2 + 32 * 5 + 32 * 3 + 32 * 2 + hookData length = 64 + 320 + hookData length
             assembly ("memory-safe") {
                 let hookDataLength := shr(232, calldataload(add(extraDataOffset, 27)))
-                let dataLength := shl(5, shr(5, add(hookDataLength, 351))) // Round up to the next complete word (320 + 31 = 351)
+                // Round up to the next complete word (320 + 31 = 351)
+                let dataLength := shl(5, shr(5, add(hookDataLength, 351)))
 
                 data := mload(0x40)
                 mstore(0x40, add(data, add(96, dataLength))) // update free memory pointer
@@ -656,7 +660,7 @@ library PairInteraction {
     ) internal returns (uint256 amountIn) {
         (uint256 success, int256 deltaIn,) =
             callSwapUV4(route, value, manager, dataOffset, zeroForOne, int256(amountOut));
-        if (success != 0) revert PairInteraction__InvalidState(); // Revert if the call succeeded as we expect it to fail
+        if (success != 0) revert PairInteraction__InvalidState(); // Revert if the call succeeded (invalid state)
         unchecked {
             return uint256(-deltaIn); // Invert the sign
         }
