@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20Errors} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20, IERC20Errors} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {TokenLib} from "../../src/libraries/TokenLib.sol";
@@ -21,6 +21,7 @@ contract TokenLibTest is Test {
 
     bool _revert;
     bytes _data;
+    uint256 _case;
 
     modifier verifyMemory() {
         assembly ("memory-safe") {
@@ -46,24 +47,41 @@ contract TokenLibTest is Test {
         assertEq(mem0x80, _mem0x80, "::2");
     }
 
-    fallback(bytes calldata) external payable returns (bytes memory) {
-        return _fallback();
+    fallback(bytes calldata data) external payable returns (bytes memory) {
+        return _fallback(data);
     }
 
     receive() external payable {
-        _fallback();
-    }
-
-    function _fallback() internal view returns (bytes memory) {
-        bytes memory data = _data;
-
-        if (_revert) {
-            assembly ("memory-safe") {
-                revert(add(data, 0x20), mload(data))
-            }
+        bytes calldata empty;
+        assembly ("memory-safe") {
+            empty.offset := 0
+            empty.length := 0
         }
 
-        return data;
+        _fallback(empty);
+    }
+
+    function _fallback(bytes calldata msgData) internal returns (bytes memory) {
+        uint256 c = _case;
+        if (c == 0) {
+            bytes memory data = _data;
+
+            if (_revert) {
+                assembly ("memory-safe") {
+                    revert(add(data, 0x20), mload(data))
+                }
+            }
+
+            return data;
+        } else if (c == 1) {
+            if (msg.sig == IERC20.approve.selector) {
+                if (uint256(bytes32(msgData[36:68])) != 0) revert("Nope");
+                _case = 0;
+            }
+            return _data;
+        }
+
+        revert("Unknown case");
     }
 
     function setUp() public {
@@ -315,6 +333,67 @@ contract TokenLibTest is Test {
         this.transferFrom(address(this), address(this), address(this), 1e18);
     }
 
+    function test_Fuzz_Approve(address spender0, address spender1, uint256 amount0, uint256 amount1) public {
+        vm.assume(spender0 != spender1 && spender0 != address(0) && spender1 != address(0));
+
+        this.forceApprove(address(token0), spender0, amount0);
+        this.forceApprove(address(token1), spender1, amount1);
+
+        assertEq(token0.allowance(address(this), spender0), amount0, "test_Fuzz_Approve::1");
+        assertEq(token1.allowance(address(this), spender1), amount1, "test_Fuzz_Approve::2");
+
+        this.forceApprove(address(token0), spender0, amount1);
+        this.forceApprove(address(token1), spender1, amount0);
+
+        assertEq(token0.allowance(address(this), spender0), amount1, "test_Fuzz_Approve::3");
+        assertEq(token1.allowance(address(this), spender1), amount0, "test_Fuzz_Approve::4");
+
+        // Shouldn't fail if it doesn't return any value
+        this.forceApprove(address(this), spender1, amount0);
+
+        // Check that approve to tokens like USDT works
+        _case = 1;
+        this.forceApprove(address(this), spender1, 1e18);
+
+        _case = 1;
+        _data = abi.encode(true);
+        this.forceApprove(address(this), spender1, 1e18);
+    }
+
+    function test_Revert_Approve() public verifyMemory {
+        vm.expectRevert(TokenLib.TokenLib__ApproveFailed.selector);
+        this.forceApprove(address(0), address(this), 1e18);
+
+        _data = abi.encode(false);
+
+        vm.expectRevert(TokenLib.TokenLib__ApproveFailed.selector);
+        this.forceApprove(address(this), address(this), 1e18);
+
+        _data = "abc";
+
+        vm.expectRevert(TokenLib.TokenLib__ApproveFailed.selector);
+        this.forceApprove(address(this), address(this), 1e18);
+
+        _revert = true;
+        delete _data;
+
+        vm.expectRevert(TokenLib.TokenLib__ApproveFailed.selector);
+        this.forceApprove(address(this), address(this), 1e18);
+
+        _data = abi.encodeWithSelector(CustomError.selector);
+
+        vm.expectRevert(CustomError.selector);
+        this.forceApprove(address(this), address(this), 1e18);
+
+        _data = bytes("String error");
+
+        vm.expectRevert("String error");
+        this.forceApprove(address(this), address(this), 1e18);
+
+        vm.expectRevert(TokenLib.TokenLib__ApproveFailed.selector);
+        this.forceApprove(address(0), address(this), 1e18);
+    }
+
     function balanceOf(address token, address account) external verifyMemory returns (uint256) {
         return TokenLib.balanceOf(token, account);
     }
@@ -341,5 +420,9 @@ contract TokenLibTest is Test {
 
     function transferFrom(address token, address from, address to, uint256 amount) external verifyMemory {
         TokenLib.transferFrom(token, from, to, amount);
+    }
+
+    function forceApprove(address token, address spender, uint256 amount) external verifyMemory {
+        TokenLib.forceApprove(token, spender, amount);
     }
 }

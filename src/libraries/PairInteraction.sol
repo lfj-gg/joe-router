@@ -853,6 +853,72 @@ library PairInteraction {
     }
 
     /**
+     * @dev Returns the amount of tokenIn required to get amountOut from a ByReal pair.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be exactly 32 bytes.
+     */
+    function getSwapInOrOutByReal(address pair, bool isSwapIn, uint256 amount, address token)
+        internal
+        view
+        returns (uint256 result)
+    {
+        uint256 returnDataSize;
+        uint256 success;
+        assembly ("memory-safe") {
+            let m0x40 := mload(0x40)
+
+            // 0x1125f13f - getAmountIn(uint256 amountOut,address tokenOut)
+            // 0xf140a35a - getAmountOut(uint256 amountIn,address tokenIn)
+            // 0x1125f13f ^ 0xf140a35a = 0xe0655265
+            // If isSwapIn > 0 returns (0 * 0xe0655265) ^ 0x1125f13f = 0x1125f13f (getAmountIn)
+            // If isSwapIn == 0 returns (1 * 0xe0655265) ^ 0x1125f13f = 0xf140a35a (getAmountOut)
+            mstore(0, xor(mul(iszero(isSwapIn), 0xe0655265), 0x1125f13f))
+            mstore(32, amount)
+            mstore(64, token)
+
+            success := staticcall(gas(), pair, 28, 68, 0, 32)
+
+            returnDataSize := returndatasize()
+
+            result := mload(0)
+
+            mstore(0x40, m0x40)
+        }
+        _bubbleRevert(success);
+
+        if (returnDataSize != 32) revert PairInteraction__InvalidReturnData();
+    }
+
+    /**
+     * @dev Swaps tokenIn for tokenOut in a ByReal pair.
+     * The function doesn't check that the pair has any code, `getSwapInOrOutByReal` should be called first to ensure
+     * that.
+     *
+     * Requirements:
+     * - The call must succeed.
+     */
+    function swapByReal(address pair, address recipient, uint256 amountIn, address tokenIn) internal {
+        uint256 success;
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+
+            mstore(ptr, 0xf946c2a2) // swap(address,bool,uint256,address)
+            mstore(add(ptr, 32), tokenIn)
+            mstore(add(ptr, 64), 1) // always givenIn = true
+            mstore(add(ptr, 96), amountIn)
+            mstore(add(ptr, 128), recipient)
+
+            success := call(gas(), pair, 0, add(ptr, 28), 132, 0, 0)
+
+            mstore(0x40, add(ptr, 160))
+        }
+        _bubbleRevert(success);
+    }
+
+    /**
      * @dev Bubbles up a revert if the success flag is false.
      * It copies the return data to memory and reverts with it.
      * If there is no return data, it reverts with a `PairInteraction__CallFailed` error.
