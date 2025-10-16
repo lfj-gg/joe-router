@@ -9,6 +9,9 @@ pragma solidity ^0.8.20;
  * - callback: The second bit of the flags variable (0: false, 1: true)
  * - id: The last 8 bits of the flags variable (1-255)
  * Note that the bits 2-7 are unused for now, and might be used in the future
+ * The following ids must set the callback flag in order to work properly:
+ * - Uniswap V3 (UNISWAP_V3_ID)
+ * - Uniswap V4 (UNISWAP_V4_ID)
  */
 library Flags {
     uint256 internal constant ONE_FOR_ZERO = 0;
