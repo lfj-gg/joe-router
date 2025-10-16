@@ -72,7 +72,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDC_FEE,
                 tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
@@ -88,7 +88,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDT,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDT_FEE,
                 tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
@@ -133,7 +133,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDT_FEE,
                 tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
@@ -149,7 +149,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDC_FEE,
                 tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
@@ -193,7 +193,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDC_FEE,
                 tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
@@ -209,7 +209,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             USDT,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4USDT_USDC_FEE,
                 tickSpacing: UV4USDT_USDC_TICK_SPACING,
@@ -252,7 +252,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             WAVAX,
             USDT,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDT_FEE,
                 tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
@@ -268,7 +268,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4USDT_USDC_FEE,
                 tickSpacing: UV4USDT_USDC_TICK_SPACING,
@@ -312,7 +312,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             USDT,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4USDT_USDC_FEE,
                 tickSpacing: UV4USDT_USDC_TICK_SPACING,
@@ -328,7 +328,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDT_FEE,
                 tickSpacing: UV4WAVAX_USDT_TICK_SPACING,
@@ -373,7 +373,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDT,
             USDC,
             1e4,
-            ZERO_FOR_ONE | UV4ID | CALLBACK,
+            ZERO_FOR_ONE | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4USDT_USDC_FEE,
                 tickSpacing: UV4USDT_USDC_TICK_SPACING,
@@ -389,7 +389,7 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
             USDC,
             WAVAX,
             1e4,
-            ONE_FOR_ZERO | UV4ID | CALLBACK,
+            ONE_FOR_ZERO | UV4_ID | CALLBACK,
             ExtraDataUniswapV4({
                 fee: UV4WAVAX_USDC_FEE,
                 tickSpacing: UV4WAVAX_USDC_TICK_SPACING,
