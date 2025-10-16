@@ -622,7 +622,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
             tokenOut,
             address(uint160(extraDataPtr)),
             1e4,
-            UV4ID | CALLBACK | (zeroForOne ? ZERO_FOR_ONE : ONE_FOR_ZERO)
+            UV4_ID | CALLBACK | (zeroForOne ? ZERO_FOR_ONE : ONE_FOR_ZERO)
         );
         route = abi.encodePacked(
             route,
