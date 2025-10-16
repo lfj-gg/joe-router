@@ -12,6 +12,7 @@ library TokenLib {
     error TokenLib__NativeTransferFailed();
     error TokenLib__TransferFromFailed();
     error TokenLib__TransferFailed();
+    error TokenLib__ApproveFailed();
 
     /**
      * @dev Returns the balance of a token for an account.
@@ -191,6 +192,52 @@ library TokenLib {
         }
 
         if (returnSize == 0 ? token.code.length == 0 : returnValue != 1) revert TokenLib__TransferFromFailed();
+    }
+
+    /**
+     * @dev Approves an account to spend tokens on behalf of the caller.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The target contract must either return true or no value.
+     * - The target contract must have code.
+     */
+    function forceApprove(address token, address spender, uint256 amount) internal {
+        uint256 success;
+        uint256 returnSize;
+        uint256 returnValue;
+
+        assembly ("memory-safe") {
+            function approve(token_, amount_) -> success_ {
+                mstore(64, amount_)
+                success_ := call(gas(), token_, 0, 28, 68, 64, 32)
+            }
+
+            let m0x40 := mload(0x40)
+
+            mstore(0, 0x095ea7b3) // approve(address,uint256)
+            mstore(32, spender)
+
+            success := approve(token, amount)
+            if iszero(and(eq(mload(64), 1), success)) {
+                if iszero(lt(or(iszero(extcodesize(token)), returndatasize()), success)) {
+                    pop(approve(token, 0))
+                    success := approve(token, amount)
+                }
+            }
+
+            returnSize := returndatasize()
+            returnValue := mload(64)
+
+            mstore(0x40, m0x40)
+        }
+
+        if (success == 0) {
+            _tryRevertWithReason();
+            revert TokenLib__ApproveFailed();
+        }
+
+        if (returnSize == 0 ? token.code.length == 0 : returnValue != 1) revert TokenLib__ApproveFailed();
     }
 
     /**

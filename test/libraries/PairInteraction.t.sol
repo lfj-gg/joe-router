@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {PairInteraction} from "../../src/libraries/PairInteraction.sol";
 import {TokenLib} from "../../src/libraries/TokenLib.sol";
 import {PackedRoute, PackedRouteHelper} from "../PackedRouteHelper.sol";
+import {IByRealPool} from "../interfaces/IByRealPool.sol";
 import {ILBPair} from "../interfaces/ILBPair.sol";
 import {ILegacyLBPair} from "../interfaces/ILegacyLBPair.sol";
 import {ITMPair} from "../interfaces/ITMPair.sol";
@@ -113,6 +114,14 @@ contract PairInteractionTest is Test, PackedRouteHelper {
             bytes memory returnData = abi.encodePacked(uint256(0x20), uint256(0x40), amount0, amount1);
             assembly ("memory-safe") {
                 return(add(returnData, 0x20), mload(returnData))
+            }
+        }
+
+        if (c == 6) {
+            (bytes memory b0, bytes memory b1) = abi.decode(_data, (bytes, bytes));
+            if (keccak256(msg.data) != keccak256(b0)) revert("Unexpected data");
+            assembly ("memory-safe") {
+                return(add(b1, 0x20), mload(b1))
             }
         }
     }
@@ -962,6 +971,66 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.settleOrTakeUV4(tokenA, address(this), delta, wnative);
     }
 
+    function test_Fuzz_GetSwapInOrOutByReal(bool isSwapIn, uint256 amount, address token, uint256 result)
+        public
+        verifyMemory
+    {
+        _case = 6;
+        bytes memory expectedData = isSwapIn
+            ? abi.encodeWithSelector(IByRealPool.getAmountIn.selector, amount, token)
+            : abi.encodeWithSelector(IByRealPool.getAmountOut.selector, amount, token);
+        _data = abi.encode(expectedData, abi.encode(result));
+
+        uint256 res = this.getSwapInOrOutByReal(address(this), isSwapIn, amount, token);
+        assertEq(res, result, "test_Fuzz_GetSwapInOrOutByReal::1");
+    }
+
+    function test_Fuzz_Revert_GetSwapInOrOutByReal(bool isSwapIn, uint256 amount, address token) public {
+        // Should revert if call fails
+        _case = 2;
+        _data = abi.encodeWithSelector(CustomError.selector);
+        vm.expectRevert(CustomError.selector);
+        this.getSwapInOrOutByReal(address(this), isSwapIn, amount, token);
+
+        _data = new bytes(0);
+        vm.expectRevert(PairInteraction.PairInteraction__CallFailed.selector);
+        this.getSwapInOrOutByReal(address(this), isSwapIn, amount, token);
+
+        // Should revert if return data size is not 32
+        _case = 1;
+        _data = abi.encode(new bytes(31));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.getSwapInOrOutByReal(address(this), isSwapIn, amount, token);
+
+        _data = abi.encode(new bytes(33));
+        vm.expectRevert(PairInteraction.PairInteraction__InvalidReturnData.selector);
+        this.getSwapInOrOutByReal(address(this), isSwapIn, amount, token);
+    }
+
+    function test_Fuzz_SwapByReal(address recipient, uint256 amountIn, address tokenIn) public verifyMemory {
+        _case = 0;
+
+        this.swapByReal(address(this), recipient, amountIn, tokenIn);
+
+        assertEq(
+            _msgData,
+            abi.encodeWithSelector(IByRealPool.swap.selector, tokenIn, true, amountIn, recipient),
+            "test_Fuzz_SwapByReal::1"
+        );
+    }
+
+    function test_Fuzz_Revert_SwapByReal(address recipient, uint256 amountIn, address tokenIn) public {
+        // Should revert if call fails
+        _case = 2;
+        _data = abi.encodeWithSelector(CustomError.selector);
+        vm.expectRevert(CustomError.selector);
+        this.swapByReal(address(this), recipient, amountIn, tokenIn);
+
+        _data = new bytes(0);
+        vm.expectRevert(PairInteraction.PairInteraction__CallFailed.selector);
+        this.swapByReal(address(this), recipient, amountIn, tokenIn);
+    }
+
     // Helper functions
 
     function getReservesUV2(address pair, bool ordered) external view returns (uint256, uint256) {
@@ -1078,5 +1147,17 @@ contract PairInteractionTest is Test, PackedRouteHelper {
 
     function settleOrTakeUV4(address token, address recipient, int256 delta, address wnative_) external {
         PairInteraction.settleOrTakeUV4(token, recipient, delta, wnative_);
+    }
+
+    function getSwapInOrOutByReal(address pair, bool isSwapIn, uint256 amount, address token)
+        external
+        view
+        returns (uint256)
+    {
+        return PairInteraction.getSwapInOrOutByReal(pair, isSwapIn, amount, token);
+    }
+
+    function swapByReal(address pair, address recipient, uint256 amountIn, address tokenIn) external {
+        PairInteraction.swapByReal(pair, recipient, amountIn, tokenIn);
     }
 }
