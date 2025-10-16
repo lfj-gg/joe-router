@@ -314,6 +314,8 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         public
         verifyMemory
     {
+        amountOut = bound(amountOut, 0, uint256(type(int256).max));
+
         _case = 2;
         _data = abi.encodeWithSelector(bytes4(0xaabbccdd), amount0, amount1, abi.encode(address(this)));
 
@@ -323,6 +325,8 @@ contract PairInteractionTest is Test, PackedRouteHelper {
     }
 
     function test_Fuzz_Revert_GetSwapInUV3(bool zeroForOne, uint256 amountOut, int256 amount0, int256 amount1) public {
+        amountOut = bound(amountOut, 0, uint256(type(int256).max));
+
         _case = 1;
         _data = abi.encodeWithSelector(bytes4(0xaabbccdd), amount0, amount1, abi.encode(address(this)));
 
@@ -363,6 +367,8 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         int256 amount1,
         address recipient
     ) public verifyMemory {
+        amountIn = bound(amountIn, 0, uint256(type(int256).max));
+
         _case = 0;
         _data = abi.encode(amount0, amount1);
 
@@ -391,6 +397,8 @@ contract PairInteractionTest is Test, PackedRouteHelper {
     }
 
     function test_Fuzz_Revert_SwapUV3(address tokenIn, bool zeroForOne, uint256 amountIn, address recipient) public {
+        amountIn = bound(amountIn, 0, uint256(type(int256).max));
+
         _case = 1;
         _data = new bytes(63);
 
@@ -909,7 +917,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
     }
 
     function test_Fuzz_Revert_SettleUV4(int256 delta, uint256 returnDataSize) public {
-        delta = bound(delta, type(int256).min, -1);
+        delta = bound(delta, -type(int256).max, -1);
 
         // Should revert if sync fail
         _case = 2;

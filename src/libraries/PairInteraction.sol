@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {PackedRoute} from "./PackedRoute.sol";
+import {SafeCast} from "./SafeCast.sol";
 import {TokenLib} from "./TokenLib.sol";
 
 /**
@@ -9,6 +10,9 @@ import {TokenLib} from "./TokenLib.sol";
  * @dev Library for interacting with Uniswap V2, LFJ, and Uniswap V3 pairs.
  */
 library PairInteraction {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+
     error PairInteraction__InvalidReturnData();
     error PairInteraction__CallFailed();
     error PairInteraction__InvalidState();
@@ -225,7 +229,7 @@ library PairInteraction {
      *   `UniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta)` error.
      */
     function getSwapInUV3(address pair, bool zeroForOne, uint256 amountOut) internal returns (uint256 amountIn) {
-        (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -int256(amountOut), address(0));
+        (uint256 success, uint256 ptr) = callSwapUV3(pair, address(this), zeroForOne, -amountOut.toInt256(), address(0));
 
         assembly ("memory-safe") {
             // data = [selector: 4][amount0: 32][amount1: 32][data_ptr: 32][data_length: 32][data_value: 32]
@@ -254,7 +258,7 @@ library PairInteraction {
         internal
         returns (uint256 actualAmountOut, uint256 actualAmountIn, uint256 expectedHash)
     {
-        (uint256 success, uint256 ptr) = callSwapUV3(pair, recipient, zeroForOne, int256(amountIn), tokenIn);
+        (uint256 success, uint256 ptr) = callSwapUV3(pair, recipient, zeroForOne, amountIn.toInt256(), tokenIn);
         _bubbleRevert(success);
 
         uint256 returnDataSize;
@@ -659,10 +663,10 @@ library PairInteraction {
         uint256 amountOut
     ) internal returns (uint256 amountIn) {
         (uint256 success, int256 deltaIn,) =
-            callSwapUV4(route, value, manager, dataOffset, zeroForOne, int256(amountOut));
+            callSwapUV4(route, value, manager, dataOffset, zeroForOne, amountOut.toInt256());
         if (success != 0) revert PairInteraction__InvalidState(); // Revert if the call succeeded (invalid state)
         unchecked {
-            return uint256(-deltaIn); // Invert the sign
+            return (-deltaIn).toUint256(); // Invert the sign
         }
     }
 
@@ -682,10 +686,10 @@ library PairInteraction {
         uint256 amountIn
     ) internal returns (uint256 amountOut, uint256 actualAmountIn) {
         (uint256 success, int256 deltaIn, int256 deltaOut) =
-            callSwapUV4(route, value, manager, dataOffset, zeroForOne, -int256(amountIn));
+            callSwapUV4(route, value, manager, dataOffset, zeroForOne, -amountIn.toInt256());
         _bubbleRevert(success);
         unchecked {
-            return (uint256(deltaOut), uint256(-deltaIn)); // Invert the sign of deltaIn
+            return (deltaOut.toUint256(), (-deltaIn).toUint256()); // Invert the sign of deltaIn
         }
     }
 
@@ -807,9 +811,9 @@ library PairInteraction {
             uint256 nativeValue;
             if (token == address(0)) {
                 // The token is native, unwrap wnative and send it
-                TokenLib.unwrap(wnative, (nativeValue = uint256(delta)));
+                TokenLib.unwrap(wnative, (nativeValue = delta.toUint256()));
             } else {
-                TokenLib.transfer(token, msg.sender, uint256(delta));
+                TokenLib.transfer(token, msg.sender, delta.toUint256());
             }
 
             uint256 amount;
@@ -843,7 +847,7 @@ library PairInteraction {
             if (to != recipient) {
                 // If the token is native, use this as a temporary address to receive the native token
                 // then wrap it, and send it to the actual recipient
-                TokenLib.transfer(wnative, recipient, uint256(delta));
+                TokenLib.transfer(wnative, recipient, delta.toUint256());
             }
         }
     }

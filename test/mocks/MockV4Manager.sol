@@ -71,6 +71,7 @@ contract MockV4Manager {
     function settle() external payable returns (uint256 amount) {
         require(unlocked, "Not unlocked");
         amount = TokenLib.universalBalanceOf(_token, address(this)) - _balance;
+        // forge-lint: disable-next-line(unsafe-typecast)
         _balances[_token] += int256(amount);
 
         _token = address(0);
@@ -79,6 +80,7 @@ contract MockV4Manager {
 
     function take(address token, address to, uint256 amount) external {
         require(unlocked, "Not unlocked");
+        // forge-lint: disable-next-line(unsafe-typecast)
         _balances[token] -= int256(amount);
         if (token == address(0)) TokenLib.transferNative(to, amount);
         else TokenLib.transfer(token, to, amount);

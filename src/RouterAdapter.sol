@@ -53,6 +53,7 @@ abstract contract RouterAdapter {
     fallback(bytes calldata data) external returns (bytes memory) {
         uint256 callbackData = _callbackData;
         uint256 id = Flags.id(callbackData);
+        // forge-lint: disable-next-line(unsafe-typecast)
         address account = address(uint160(callbackData >> 96));
 
         if (id == Flags.UNISWAP_V3_ID && msg.sender == account) {
