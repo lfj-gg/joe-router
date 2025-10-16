@@ -217,7 +217,8 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
     function updateRouterLogic(address logic, bool add) external override onlyOwner {
         if (add) {
             if (!_trustedLogics.add(logic)) revert Router__LogicAlreadyAdded(logic);
-            else if (!_trustedLogics.remove(logic)) revert Router__LogicNotFound(logic);
+        } else {
+            if (!_trustedLogics.remove(logic)) revert Router__LogicNotFound(logic);
         }
 
         emit RouterLogicUpdated(logic, add);
