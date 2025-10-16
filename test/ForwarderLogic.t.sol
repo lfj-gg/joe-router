@@ -162,7 +162,9 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
             );
             data = feePercent == 0
                 ? abi.encodePacked(address(this), address(this), uint16(0), call)
-                : abi.encodePacked(address(this), address(this), uint16(feePercent), uint8(1), thirdPartyFeeReceiver, call);
+                : abi.encodePacked(
+                    address(this), address(this), uint16(feePercent), uint8(1), thirdPartyFeeReceiver, call
+                );
         }
 
         vm.prank(from);
@@ -227,7 +229,9 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
                 abi.encodeCall(this.swap, (tokenIn, tokenOut, amountIn, amountOut, address(forwarderLogic)));
             data = feePercent == 0
                 ? abi.encodePacked(address(this), address(this), uint16(0), call)
-                : abi.encodePacked(address(this), address(this), uint16(feePercent), uint8(0), thirdPartyFeeReceiver, call);
+                : abi.encodePacked(
+                    address(this), address(this), uint16(feePercent), uint8(0), thirdPartyFeeReceiver, call
+                );
         }
 
         vm.prank(from);
@@ -423,7 +427,9 @@ contract ForwarderLogicTest is Test, PackedRouteHelper {
         address from,
         address to
     ) public {
-        if (from == address(0) || from == address(this) || from == address(forwarderLogic)) from = address(1);
+        if (from == address(0) || from == address(this) || from == address(forwarderLogic)) {
+            from = address(1);
+        }
         if (to == address(0) || to == address(this) || to == address(forwarderLogic)) to = address(2);
         if (from == to) {
             from = address(1);

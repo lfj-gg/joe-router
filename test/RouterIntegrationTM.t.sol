@@ -73,7 +73,10 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router)
+            .call{
+                value: 0.1e18
+            }(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector, logic, USDC, CHAMP, amountIn, 1, alice, true, multiRoutes
                 )
@@ -134,7 +137,10 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
             multiRoutes[0] = route;
             multiRoutes[1] = route;
 
-            (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
+            (bool success, bytes memory data) = address(router)
+            .call{
+                value: 0.1e18
+            }(
                 abi.encodeWithSelector(
                     IRouter.simulate.selector,
                     logic,
@@ -162,9 +168,9 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
             expectedIn = values[0];
         }
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
-            address(logic), CHAMP, USDC, amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: 0.1e18
+        }(address(logic), CHAMP, USDC, amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::5");
@@ -189,9 +195,9 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         ptr = _setRoute(route, ptr, WAVAX, CHAMP, TM_CHAMP_AVAX, 1.0e4, TM_ID | ONE_FOR_ZERO);
 
         vm.prank(alice);
-        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: amountIn + 0.1e18}(
-            address(logic), address(0), CHAMP, amountIn, 1, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{
+            value: amountIn + 0.1e18
+        }(address(logic), address(0), CHAMP, amountIn, 1, alice, block.timestamp, route);
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToToken::1");
         assertGt(totalOut, 0, "test_SwapExactInNativeToToken::2");
@@ -224,9 +230,9 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         assertGe(uint256(-deltaBase), amountOut, "test_SwapExactOutNativeToToken::2");
 
         vm.prank(alice);
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
-            address(logic), address(0), CHAMP, amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: maxAmountIn + 0.1e18
+        }(address(logic), address(0), CHAMP, amountOut, maxAmountIn, alice, block.timestamp, route);
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::3");
         assertGe(totalOut, amountOut, "test_SwapExactOutNativeToToken::4");
@@ -251,9 +257,9 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         vm.startPrank(alice);
         IERC20(CHAMP).approve(address(router), amountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: 0.1e18}(
-            address(logic), CHAMP, address(0), amountIn, 1, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{
+            value: 0.1e18
+        }(address(logic), CHAMP, address(0), amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNative::1");
@@ -280,9 +286,9 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
         vm.startPrank(alice);
         IERC20(CHAMP).approve(address(router), maxAmountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
-            address(logic), CHAMP, address(0), amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: 0.1e18
+        }(address(logic), CHAMP, address(0), amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNative::1");
@@ -306,14 +312,14 @@ contract RouterIntegrationTMTest is Test, PackedRouteHelper {
 
         vm.prank(alice);
         vm.expectRevert(RouterAdapter.RouterAdapter__InsufficientTMLiquidity.selector);
-        router.swapExactIn{value: 1e36 + 0.1e18}(
-            address(logic), address(0), CHAMP, amountIn, 1, alice, block.timestamp, route
-        );
+        router.swapExactIn{
+            value: 1e36 + 0.1e18
+        }(address(logic), address(0), CHAMP, amountIn, 1, alice, block.timestamp, route);
 
         vm.prank(alice);
         vm.expectRevert(RouterAdapter.RouterAdapter__InsufficientTMLiquidity.selector);
-        router.swapExactOut{value: 1e36 + 0.1e18}(
-            address(logic), address(0), CHAMP, amountIn, amountIn, alice, block.timestamp, route
-        );
+        router.swapExactOut{
+            value: 1e36 + 0.1e18
+        }(address(logic), address(0), CHAMP, amountIn, amountIn, alice, block.timestamp, route);
     }
 }

@@ -663,11 +663,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         (address currency0, address currency1) = tokenIn < tokenOut ? (tokenIn, tokenOut) : (tokenOut, tokenIn);
 
         IUV4Manager.PoolKey memory key = IUV4Manager.PoolKey({
-            currency0: currency0,
-            currency1: currency1,
-            fee: fee,
-            tickSpacing: tickSpacing,
-            hooks: hooks
+            currency0: currency0, currency1: currency1, fee: fee, tickSpacing: tickSpacing, hooks: hooks
         });
         IUV4Manager.SwapParams memory params = IUV4Manager.SwapParams({
             zeroForOne: zeroForOne,

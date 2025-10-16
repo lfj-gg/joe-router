@@ -159,6 +159,5 @@ interface ILegacyLBRouter {
 
     function sweep(address token, address to, uint256 amount) external;
 
-    function sweepLBToken(address _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts)
-        external;
+    function sweepLBToken(address _lbToken, address _to, uint256[] calldata _ids, uint256[] calldata _amounts) external;
 }
