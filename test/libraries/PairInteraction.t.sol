@@ -33,6 +33,34 @@ contract PairInteractionTest is Test, PackedRouteHelper {
     address payable uniswapV4;
     address to;
 
+    uint256 _mem0x40;
+    uint256 _mem0x60;
+    uint256 _mem0x80;
+
+    modifier verifyMemory() {
+        assembly ("memory-safe") {
+            sstore(_mem0x40.slot, 0x40)
+            sstore(_mem0x60.slot, 0x60)
+            sstore(_mem0x80.slot, 0x80)
+        }
+
+        _;
+
+        uint256 mem0x40;
+        uint256 mem0x60;
+        uint256 mem0x80;
+
+        assembly ("memory-safe") {
+            mem0x40 := sload(_mem0x40.slot)
+            mem0x60 := sload(_mem0x60.slot)
+            mem0x80 := sload(_mem0x80.slot)
+        }
+
+        assertEq(mem0x40, _mem0x40, "::0");
+        assertEq(mem0x60, _mem0x60, "::1");
+        assertEq(mem0x80, _mem0x80, "::2");
+    }
+
     receive() external payable {
         if (msg.sender != wnative) TokenLib.wrap(wnative, msg.value);
     }
@@ -96,7 +124,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         uniswapV4 = payable(address(new MockV4Manager()));
     }
 
-    function test_Fuzz_GetOrderedReservesUV2(bool zeroForOne, uint112 reserve0, uint112 reserve1) public {
+    function test_Fuzz_GetOrderedReservesUV2(bool zeroForOne, uint112 reserve0, uint112 reserve1) public verifyMemory {
         _case = 1;
         _data = abi.encode(reserve0, reserve1);
 
@@ -127,7 +155,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.getReservesUV2(address(this), zeroForOne);
     }
 
-    function test_Fuzz_SwapUV2(uint256 amount0, uint256 amount1, address recipient) public {
+    function test_Fuzz_SwapUV2(uint256 amount0, uint256 amount1, address recipient) public verifyMemory {
         _case = 0;
 
         this.swapUV2(address(this), amount0, amount1, recipient);
@@ -152,7 +180,10 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.swapUV2(address(this), amount0, amount1, recipient);
     }
 
-    function test_Fuzz_GetSwapInLegacyLB(address pair, uint256 amountOut, bool swapForY, uint256 amountIn) public {
+    function test_Fuzz_GetSwapInLegacyLB(address pair, uint256 amountOut, bool swapForY, uint256 amountIn)
+        public
+        verifyMemory
+    {
         _case = 1;
         _data = abi.encode(amountIn);
 
@@ -180,7 +211,10 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.getSwapInLegacyLB(address(this), pair, amountOut, swapForY);
     }
 
-    function test_Fuzz_SwapLegacyLB(bool swapForY, address recipient, uint256 amountX, uint256 amountY) public {
+    function test_Fuzz_SwapLegacyLB(bool swapForY, address recipient, uint256 amountX, uint256 amountY)
+        public
+        verifyMemory
+    {
         _case = 0;
         _data = abi.encode(amountX, amountY);
 
@@ -214,7 +248,10 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.swapLegacyLB(address(this), swapForY, recipient);
     }
 
-    function test_Fuzz_GetSwapInLB(uint256 amountOut, bool swapForY, uint256 amountIn, uint256 amountLeft) public {
+    function test_Fuzz_GetSwapInLB(uint256 amountOut, bool swapForY, uint256 amountIn, uint256 amountLeft)
+        public
+        verifyMemory
+    {
         _case = 1;
         _data = abi.encode(amountIn, amountLeft);
 
@@ -243,7 +280,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.getSwapInLB(address(this), amountOut, swapForY);
     }
 
-    function test_Fuzz_SwapLB(bool swapForY, address recipient, uint128 amountX, uint128 amountY) public {
+    function test_Fuzz_SwapLB(bool swapForY, address recipient, uint128 amountX, uint128 amountY) public verifyMemory {
         _case = 0;
         _data = abi.encodePacked(amountY, amountX);
 
@@ -273,7 +310,10 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.swapLB(address(this), swapForY, recipient);
     }
 
-    function test_Fuzz_GetSwapInUV3(bool zeroForOne, uint256 amountOut, int256 amount0, int256 amount1) public {
+    function test_Fuzz_GetSwapInUV3(bool zeroForOne, uint256 amountOut, int256 amount0, int256 amount1)
+        public
+        verifyMemory
+    {
         _case = 2;
         _data = abi.encodeWithSelector(bytes4(0xaabbccdd), amount0, amount1, abi.encode(address(this)));
 
@@ -322,7 +362,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         int256 amount0,
         int256 amount1,
         address recipient
-    ) public {
+    ) public verifyMemory {
         _case = 0;
         _data = abi.encode(amount0, amount1);
 
@@ -371,6 +411,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
 
     function test_Fuzz_GetSwapInTM(uint256 amountOut, bool swapForY, uint256 actualAmountIn, uint256 actualAmountOut)
         public
+        verifyMemory
     {
         amountOut = bound(amountOut, 0, uint256(type(int256).max));
         actualAmountIn = bound(actualAmountIn, 0, uint256(type(int256).max));
@@ -412,7 +453,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         uint256 actualAmountIn,
         uint256 actualAmountOut,
         address recipient
-    ) public {
+    ) public verifyMemory {
         amountIn = bound(amountIn, 0, uint256(type(int256).max));
         actualAmountIn = bound(actualAmountIn, 0, uint256(type(int256).max));
         actualAmountOut = bound(actualAmountOut, 0, uint256(type(int256).max));
@@ -453,7 +494,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         this.swapTM(address(this), recipient, amountOut, swapForY);
     }
 
-    function test_Fuzz_GetSqrtLimitPriceInTMV2(bool swapForY, uint256 sqrtPrice) public {
+    function test_Fuzz_GetSqrtLimitPriceInTMV2(bool swapForY, uint256 sqrtPrice) public verifyMemory {
         sqrtPrice = bound(sqrtPrice, 1, type(uint256).max);
         _case = 1;
         _data = swapForY ? abi.encode(sqrtPrice, 0, 0) : abi.encode(0, 0, sqrtPrice);
@@ -488,7 +529,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         uint256 sqrtLimitPrice,
         uint256 actualAmountIn,
         uint256 actualAmountOut
-    ) public {
+    ) public verifyMemory {
         sqrtLimitPrice = bound(sqrtLimitPrice, 1, type(uint256).max);
         amountOut = bound(amountOut, 0, uint256(type(int256).max));
         actualAmountIn = bound(actualAmountIn, 0, uint256(type(int256).max));
@@ -538,7 +579,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         uint256 actualAmountIn,
         uint256 actualAmountOut,
         address recipient
-    ) public {
+    ) public verifyMemory {
         amountIn = bound(amountIn, 0, uint256(type(int256).max));
         actualAmountIn = bound(actualAmountIn, 0, uint256(type(int256).max));
         actualAmountOut = bound(actualAmountOut, 0, uint256(type(int256).max));
@@ -562,7 +603,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         );
     }
 
-    function test_Fuzz_Revert_SwapTMV2(uint256 amountOut, bool swapForY, address recipient) public {
+    function test_Fuzz_Revert_SwapTMV2(uint256 amountOut, bool swapForY, address recipient) public verifyMemory {
         _case = 3;
         _data = abi.encode(new bytes(95), new bytes(64));
 
@@ -651,7 +692,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         bool zeroForOne,
         int256 deltaAmount,
         bytes memory hookData
-    ) public {
+    ) public verifyMemory {
         if (tokenIn == tokenOut) tokenOut = address(uint160(tokenOut) + 1);
 
         (bytes memory route, uint256 ptr, uint256 extraDataPtr) =
@@ -688,7 +729,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
         uint256 amountIn,
         uint256 amountOut,
         bytes memory hookData
-    ) public {
+    ) public verifyMemory {
         unchecked {
             if (tokenIn == tokenOut) tokenOut = address(uint160(tokenOut) + 1);
         }
@@ -723,7 +764,7 @@ contract PairInteractionTest is Test, PackedRouteHelper {
     uint256 actualIn;
     uint256 actualOut;
 
-    function test_Fuzz_SwapUV4(SwapInput memory input, bytes memory hookData) public {
+    function test_Fuzz_SwapUV4(SwapInput memory input, bytes memory hookData) public verifyMemory {
         input.amountIn = bound(input.amountIn, 1, uint256(int256(type(int128).max)));
         input.amountOut = bound(input.amountOut, 1, uint256(int256(type(int128).max)));
 
