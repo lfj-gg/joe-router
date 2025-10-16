@@ -12,6 +12,7 @@ pragma solidity ^0.8.20;
  * The following ids must set the callback flag in order to work properly:
  * - Uniswap V3 (UNISWAP_V3_ID)
  * - Uniswap V4 (UNISWAP_V4_ID)
+ * - ByReal (BYREAL_ID)
  */
 library Flags {
     uint256 internal constant ONE_FOR_ZERO = 0;
@@ -30,6 +31,7 @@ library Flags {
     uint256 internal constant LFJ_TOKEN_MILL_ID = 5 << ID_OFFSET;
     uint256 internal constant LFJ_TOKEN_MILL_V2_ID = 6 << ID_OFFSET;
     uint256 internal constant UNISWAP_V4_ID = 7 << ID_OFFSET;
+    uint256 internal constant BYREAL_ID = 8 << ID_OFFSET;
 
     /// forge-lint: disable-end(incorrect-shift)
 

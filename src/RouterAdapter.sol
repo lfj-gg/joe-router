@@ -87,6 +87,8 @@ abstract contract RouterAdapter {
         else if (id == Flags.LFJ_TOKEN_MILL_ID) amountIn = _getAmountInTM(pair, flags, amountOut);
         else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountIn = _getAmountInTMV2(pair, flags, amountOut);
         else if (id == Flags.UNISWAP_V4_ID) amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
+        // Not supported yet because of a rounding issue in the getAmountIn vs getAmountOut functions
+        // else if (id == Flags.BYREAL_ID) amountIn = _getSwapInByReal(route, pair, amountOut, value);
         else revert RouterAdapter__InvalidId();
     }
 
@@ -114,6 +116,7 @@ abstract contract RouterAdapter {
         else if (id == Flags.LFJ_TOKEN_MILL_ID) amountOut = _swapTM(pair, flags, recipient, amountIn);
         else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountOut = _swapTMV2(pair, flags, recipient, amountIn);
         else if (id == Flags.UNISWAP_V4_ID) amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
+        else if (id == Flags.BYREAL_ID) amountOut = _swapByReal(pair, recipient, amountIn, tokenIn);
         else revert RouterAdapter__InvalidId();
     }
 
@@ -322,5 +325,29 @@ abstract contract RouterAdapter {
     function _uniswapV4UnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
         (int256 delta0, int256 delta1) = PairInteraction.swapUV4Callback(data, recipient, WNATIVE);
         return abi.encode(0x20, 0x40, delta0, delta1);
+    }
+
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the ByReal pair.
+     */
+    function _getSwapInByReal(bytes calldata route, address pair, uint256 amountOut, bytes32 value)
+        internal
+        view
+        returns (uint256)
+    {
+        address tokenOut = PackedRoute.token(route, PackedRoute.tokenOutId(value));
+        return PairInteraction.getSwapInOrOutByReal(pair, true, amountOut, tokenOut);
+    }
+
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the ByReal pair.
+     */
+    function _swapByReal(address pair, address recipient, uint256 amountIn, address tokenIn)
+        internal
+        returns (uint256 amountOut)
+    {
+        amountOut = PairInteraction.getSwapInOrOutByReal(pair, false, amountIn, tokenIn);
+        TokenLib.forceApprove(tokenIn, pair, amountIn);
+        PairInteraction.swapByReal(pair, recipient, amountIn, tokenIn);
     }
 }
