@@ -162,9 +162,9 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
         vm.startPrank(alice);
         MockERC20(USDT).approve(address(router), maxAmountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
-            address(logic), USDT, USDC, amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: 0.1e18
+        }(address(logic), USDT, USDC, amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::1");
@@ -221,9 +221,9 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
 
         vm.startPrank(alice);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: amountIn + 0.1e18}(
-            address(logic), address(0), USDT, amountIn, 1, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{
+            value: amountIn + 0.1e18
+        }(address(logic), address(0), USDT, amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInNativeToToken::1");
@@ -281,9 +281,9 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
         vm.startPrank(alice);
         MockERC20(USDT).approve(address(router), maxAmountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: maxAmountIn + 0.1e18}(
-            address(logic), address(0), USDC, amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: maxAmountIn + 0.1e18
+        }(address(logic), address(0), USDC, amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutNativeToToken::1");
@@ -341,9 +341,9 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
         vm.startPrank(alice);
         MockERC20(USDC).approve(address(router), amountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{value: 0.1e18}(
-            address(logic), USDC, address(0), amountIn, 1, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactIn{
+            value: 0.1e18
+        }(address(logic), USDC, address(0), amountIn, 1, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertEq(totalIn, amountIn, "test_SwapExactInTokenToNative::1");
@@ -402,9 +402,9 @@ contract RouterIntegrationUniswapV4Test is Test, PackedRouteHelper {
         vm.startPrank(alice);
         MockERC20(USDT).approve(address(router), maxAmountIn);
 
-        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
-            address(logic), USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, route
-        );
+        (uint256 totalIn, uint256 totalOut) = router.swapExactOut{
+            value: 0.1e18
+        }(address(logic), USDT, address(0), amountOut, maxAmountIn, alice, block.timestamp, route);
         vm.stopPrank();
 
         assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToNative::1");

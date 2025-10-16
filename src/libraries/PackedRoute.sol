@@ -341,11 +341,10 @@ library PackedRoute {
      */
     function extraDataLength(bytes calldata route, uint256 swapLength) internal pure returns (uint256 length) {
         assembly ("memory-safe") {
-            length :=
-                mul(
-                    gt(swapLength, EXTRA_DATA_LENGTH_SIZE),
-                    shr(EXTRA_DATA_LENGTH_SHIFT, calldataload(sub(add(route.offset, route.length), EXTRA_DATA_LENGTH_SIZE)))
-                )
+            length := mul(
+                gt(swapLength, EXTRA_DATA_LENGTH_SIZE),
+                shr(EXTRA_DATA_LENGTH_SHIFT, calldataload(sub(add(route.offset, route.length), EXTRA_DATA_LENGTH_SIZE)))
+            )
         }
         if (length & 1 == 1) revert PackedRoute__InvalidExtraDataLength();
     }

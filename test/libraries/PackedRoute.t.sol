@@ -38,8 +38,8 @@ contract PackedRouteTest is Test {
         bytes memory route = abi.encodePacked(
             uint8(nbTokens),
             new bytes(
-                PackedRoute.IS_TRANSFER_TAX_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens
-                    + PackedRoute.ROUTE_SIZE * nbSwaps
+                PackedRoute.IS_TRANSFER_TAX_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens + PackedRoute.ROUTE_SIZE
+                    * nbSwaps
             )
         );
 
@@ -58,8 +58,8 @@ contract PackedRouteTest is Test {
         bytes memory route = abi.encodePacked(
             uint8(nbTokens),
             new bytes(
-                PackedRoute.IS_TRANSFER_TAX_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens
-                    + PackedRoute.ROUTE_SIZE * nbSwaps + extraDataLength
+                PackedRoute.IS_TRANSFER_TAX_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens + PackedRoute.ROUTE_SIZE
+                    * nbSwaps + extraDataLength
             ),
             uint24(extraDataLength)
         );
@@ -72,7 +72,9 @@ contract PackedRouteTest is Test {
         assertEq(nbTokens_, nbTokens, "test_Fuzz_Start_With_ExtraData::2");
         assertEq(nbSwaps_, nbSwaps, "test_Fuzz_Start_With_ExtraData::3");
         assertEq(
-            lib.extraDataLength(route, route.length - (PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens)),
+            lib.extraDataLength(
+                route, route.length - (PackedRoute.TOKENS_OFFSET + PackedRoute.ADDRESS_SIZE * nbTokens)
+            ),
             extraDataLength,
             "test_Fuzz_Start_With_ExtraData::4"
         );

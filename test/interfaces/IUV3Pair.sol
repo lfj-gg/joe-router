@@ -51,9 +51,7 @@ interface IUV3Pair {
         int24 tick
     );
 
-    function burn(int24 tickLower, int24 tickUpper, uint128 amount)
-        external
-        returns (uint256 amount0, uint256 amount1);
+    function burn(int24 tickLower, int24 tickUpper, uint128 amount) external returns (uint256 amount0, uint256 amount1);
     function collect(
         address recipient,
         int24 tickLower,

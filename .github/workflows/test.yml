@@ -7,7 +7,6 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-
 jobs:
   check:
     strategy:
@@ -22,8 +21,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       - name: Show Forge version
         run: |
@@ -31,15 +28,15 @@ jobs:
 
       - name: Run Forge fmt
         run: |
-          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge fmt --check
+          forge fmt --check
         id: fmt
 
       - name: Run Forge build
         run: |
-          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge build --sizes
+          forge build --sizes
         id: build
 
       - name: Run Forge tests
         run: |
-          FOUNDRY_DISABLE_NIGHTLY_WARNING=true forge test -vvv
+          forge test -vvv
         id: test

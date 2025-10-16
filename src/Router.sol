@@ -95,7 +95,9 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
         uint256 deadline,
         bytes calldata route
     ) external payable override nonReentrant returns (uint256 totalIn, uint256 totalOut) {
-        if (amountIn == 0) amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
+        if (amountIn == 0) {
+            amountIn = tokenIn == address(0) ? msg.value : TokenLib.balanceOf(tokenIn, msg.sender);
+        }
 
         _verifyParameters(amountIn, amountOutMin, to, deadline);
 
@@ -156,21 +158,21 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
         uint256[] memory amounts = new uint256[](length);
         for (uint256 i; i < length;) {
-            /// forge-lint: disable-start(unchecked-call)
-            (, bytes memory data) = address(this).delegatecall(
-                abi.encodeWithSelector(
-                    IRouter.simulateSingle.selector,
-                    logic,
-                    tokenIn,
-                    tokenOut,
-                    amountIn,
-                    amountOut,
-                    to,
-                    exactIn,
-                    multiRoutes[i++]
-                )
-            );
-            /// forge-lint: disable-end(unchecked-call)
+            /// forge-lint: disable-next-item(unchecked-call)
+            (, bytes memory data) = address(this)
+                .delegatecall(
+                    abi.encodeWithSelector(
+                        IRouter.simulateSingle.selector,
+                        logic,
+                        tokenIn,
+                        tokenOut,
+                        amountIn,
+                        amountOut,
+                        to,
+                        exactIn,
+                        multiRoutes[i++]
+                    )
+                );
 
             if (bytes4(data) == IRouter.Router__SimulateSingle.selector) {
                 assembly ("memory-safe") {
@@ -304,8 +306,9 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
 
         address logic_ = logic;
 
-        (totalIn, totalOut) =
-            RouterLib.swap(_allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic_);
+        (totalIn, totalOut) = RouterLib.swap(
+            _allowances, tokenIn, tokenOut, amountIn, amountOut, from, recipient, route, exactIn, logic_
+        );
 
         if (recipient == address(this)) {
             totalOut = _verifySwap(tokenOut, recipient, balance, amountOut, totalOut);

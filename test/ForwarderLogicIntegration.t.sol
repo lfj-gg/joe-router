@@ -97,30 +97,32 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_ODOS::1");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_ODOS::2");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_AVAX_USDC)
+            );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_ODOS::3");
         assertGe(IERC20(USDC).balanceOf(alice), USDC_AMOUNT / 2, "test_ODOS::4");
@@ -132,21 +134,25 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(0), ODOS_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_ODOS_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_ODOS_Native::2");
 
-        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -171,16 +177,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
         IERC20(WAVAX).approve(address(router), avaxAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -190,16 +197,17 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_ODOS_WithFeeIn::3");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_ODOS_WithFeeIn::4");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            avaxAmountWithFee,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                avaxAmountWithFee,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_AVAX_USDC)
+            );
 
         feeAmount = (avaxAmountWithFee * DEFAULT_FEE) / BPS;
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -221,16 +229,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -242,7 +251,10 @@ contract ForwarderLogicIntegrationTest is Test {
         );
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_ODOS_NativeWithFeeIn::4");
 
-        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
+        IRouter(router)
+        .swapExactIn{
+            value: avaxAmountWithFee
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -273,16 +285,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -295,16 +308,17 @@ contract ForwarderLogicIntegrationTest is Test {
             IERC20(WAVAX).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_ODOS_WithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_AVAX_USDC)
-        );
+        (, uint256 usdcAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_AVAX_USDC)
+            );
 
         feeAmount = (usdcAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -324,16 +338,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(ODOS, ODOS, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, ODOS_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -348,7 +363,10 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_ODOS_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        (, uint256 usdcAmountOut) = IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -380,30 +398,32 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_OKX::1");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_OKX::2");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_AVAX_USDC)
+            );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_OKX::3");
         assertGe(IERC20(USDC).balanceOf(alice), USDC_AMOUNT / 2, "test_OKX::4");
@@ -415,21 +435,25 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(0), OKX_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_OKX_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_OKX_Native::2");
 
-        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -454,16 +478,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
         IERC20(WAVAX).approve(address(router), avaxAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -473,16 +498,17 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_OKX_WithFeeIn::3");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_OKX_WithFeeIn::4");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            avaxAmountWithFee,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                avaxAmountWithFee,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_AVAX_USDC)
+            );
 
         feeAmount = (avaxAmountWithFee * DEFAULT_FEE) / BPS;
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -502,16 +528,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, OKX_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -523,7 +550,10 @@ contract ForwarderLogicIntegrationTest is Test {
         );
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_OKX_NativeWithFeeIn::4");
 
-        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
+        IRouter(router)
+        .swapExactIn{
+            value: avaxAmountWithFee
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -552,16 +582,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -574,16 +605,17 @@ contract ForwarderLogicIntegrationTest is Test {
             IERC20(WAVAX).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_OKX_WithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_AVAX_USDC)
-        );
+        (, uint256 usdcAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_AVAX_USDC)
+            );
 
         feeAmount = (usdcAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -603,16 +635,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(OKX_APPROVAL, OKX, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, OKX_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -627,7 +660,10 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_OKX_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        (, uint256 usdcAmountOut) = IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -659,30 +695,32 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(0), JAR_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(0), JAR_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_JAR::1");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_JAR::2");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(0), JAR_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(0), JAR_AVAX_USDC)
+            );
 
         assertEq(IERC20(WAVAX).balanceOf(address(this)), 0, "test_JAR::3");
         assertGe(IERC20(USDC).balanceOf(alice), USDC_AMOUNT / 2, "test_JAR::4");
@@ -694,21 +732,25 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(0), JAR_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(0), JAR_USDC_AVAX)
+            );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_JAR_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_JAR_Native::2");
 
-        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -733,16 +775,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
         IERC20(WAVAX).approve(address(router), avaxAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -752,16 +795,17 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_JAR_WithFeeIn::3");
         assertGe(IERC20(WAVAX).balanceOf(alice), AVAX_AMOUNT / 2, "test_JAR_WithFeeIn::4");
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            avaxAmountWithFee,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_AVAX_USDC)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                avaxAmountWithFee,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_AVAX_USDC)
+            );
 
         feeAmount = (avaxAmountWithFee * DEFAULT_FEE) / BPS;
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -781,16 +825,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), usdcAmountWithFee);
 
-        IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            usdcAmountWithFee,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_USDC_AVAX)
-        );
+        IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                usdcAmountWithFee,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(1), thirdPartyFeeReceiver, JAR_USDC_AVAX)
+            );
 
         uint256 feeAmount = (usdcAmountWithFee * DEFAULT_FEE) / BPS;
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -802,7 +847,10 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(feeReceiver), protocolFeeAmount, "test_JAR_NativeWithFeeIn::3");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_JAR_NativeWithFeeIn::4");
 
-        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
+        IRouter(router)
+        .swapExactIn{
+            value: avaxAmountWithFee
+        }(
             address(forwarder),
             AVAX,
             USDC,
@@ -831,16 +879,17 @@ contract ForwarderLogicIntegrationTest is Test {
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
         IERC20(WAVAX).approve(address(router), AVAX_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            WAVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                WAVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -853,16 +902,17 @@ contract ForwarderLogicIntegrationTest is Test {
             IERC20(WAVAX).balanceOf(thirdPartyFeeReceiver), feeAmount - protocolFeeAmount, "test_JAR_WithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            WAVAX,
-            USDC,
-            AVAX_AMOUNT,
-            USDC_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_AVAX_USDC)
-        );
+        (, uint256 usdcAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                WAVAX,
+                USDC,
+                AVAX_AMOUNT,
+                USDC_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_AVAX_USDC)
+            );
 
         feeAmount = (usdcAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -882,16 +932,17 @@ contract ForwarderLogicIntegrationTest is Test {
 
         IERC20(USDC).approve(address(router), USDC_AMOUNT);
 
-        (, uint256 avaxAmountOut) = IRouter(router).swapExactIn(
-            address(forwarder),
-            USDC,
-            AVAX,
-            USDC_AMOUNT,
-            AVAX_AMOUNT / 2,
-            alice,
-            block.timestamp,
-            abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_USDC_AVAX)
-        );
+        (, uint256 avaxAmountOut) = IRouter(router)
+            .swapExactIn(
+                address(forwarder),
+                USDC,
+                AVAX,
+                USDC_AMOUNT,
+                AVAX_AMOUNT / 2,
+                alice,
+                block.timestamp,
+                abi.encodePacked(JAR, JAR, uint16(DEFAULT_FEE), uint8(0), thirdPartyFeeReceiver, JAR_USDC_AVAX)
+            );
 
         uint256 feeAmount = (avaxAmountOut * DEFAULT_FEE) / (BPS - DEFAULT_FEE);
         uint256 protocolFeeAmount = (feeAmount * FEE_BIPS) / BPS;
@@ -906,7 +957,10 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_JAR_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
+        (, uint256 usdcAmountOut) = IRouter(router)
+        .swapExactIn{
+            value: AVAX_AMOUNT
+        }(
             address(forwarder),
             AVAX,
             USDC,
