@@ -117,6 +117,7 @@ abstract contract PackedRouteHelper {
         uint256 tokenInId = _tokenToId[tokenIn] - 1;
         uint256 tokenOutId = _tokenToId[tokenOut] - 1;
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         ptr = _setRoute(b, ptr, tokenInId, tokenOutId, address(uint160(extraDataPtr)), percent, flags);
 
         extraDataPtr = _setExtraDataUniswapV4(

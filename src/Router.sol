@@ -174,6 +174,7 @@ contract Router is Ownable2Step, ReentrancyGuard, IRouter {
                     )
                 );
 
+            // forge-lint: disable-next-line(unsafe-typecast)
             if (bytes4(data) == IRouter.Router__SimulateSingle.selector) {
                 assembly ("memory-safe") {
                     mstore(add(amounts, mul(i, 32)), mload(add(data, 36)))
