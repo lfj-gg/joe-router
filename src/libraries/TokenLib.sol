@@ -190,7 +190,7 @@ library TokenLib {
             revert TokenLib__TransferFromFailed();
         }
 
-        if (returnSize == 0 ? address(token).code.length == 0 : returnValue != 1) revert TokenLib__TransferFromFailed();
+        if (returnSize == 0 ? token.code.length == 0 : returnValue != 1) revert TokenLib__TransferFromFailed();
     }
 
     /**
