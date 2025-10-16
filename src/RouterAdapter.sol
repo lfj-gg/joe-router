@@ -58,7 +58,7 @@ abstract contract RouterAdapter {
         if (id == Flags.UNISWAP_V3_ID && msg.sender == account) {
             return _uniswapV3SwapCallback(data);
         } else if (id == Flags.UNISWAP_V4_ID && msg.sender == UNISWAP_V4_MANAGER) {
-            return UNISWAP_V4_MANAGERUnlockCallback(data, account);
+            return UniswapV4UnlockCallback(data, account);
         }
 
         assembly ("memory-safe") {
@@ -308,7 +308,7 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The caller must be the callback address.
      */
-    function UNISWAP_V4_MANAGERUnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
+    function UniswapV4UnlockCallback(bytes calldata data, address recipient) internal returns (bytes memory) {
         (int256 delta0, int256 delta1) = PairInteraction.swapUV4Callback(data, recipient, WNATIVE);
         return abi.encode(0x20, 0x40, delta0, delta1);
     }
