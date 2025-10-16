@@ -272,6 +272,12 @@ abstract contract RouterAdapter {
         return amountOut;
     }
 
+    /* Uniswap V4 */
+
+    /**
+     * @dev Returns the amount of tokenIn needed to get amountOut from the Uniswap V4 pair.
+     * Will set the callback address to the Uniswap V4 manager.
+     */
     function _getAmountInUV4(bytes calldata route, bytes32 value, address pair, uint256 flags, uint256 amountOut)
         internal
         returns (uint256)
@@ -282,6 +288,10 @@ abstract contract RouterAdapter {
         return PairInteraction.getSwapInUV4(route, value, UNISWAP_V4_MANAGER, pair, Flags.zeroForOne(flags), amountOut);
     }
 
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Uniswap V4 pair.
+     * Will set the callback address to the recipient.
+     */
     function _swapUV4(
         bytes calldata route,
         bytes32 value,
