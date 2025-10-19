@@ -14,7 +14,7 @@ interface IByRealPool {
     function getAmountIn(uint256 amountOut, address tokenOut) external view returns (uint256);
 
     // Swap function
-    function swap(address token, bool givenIn, uint256 amount, address to) external;
+    function swap(address token, bool givenIn, uint256 amount, address to) external returns (uint256);
 
     // Oracle functions
     function getOraclePrice() external view returns (uint256);
