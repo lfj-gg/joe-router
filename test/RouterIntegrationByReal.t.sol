@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {IRouter, Router} from "../src/Router.sol";
+import {RouterAdapter} from "../src/RouterAdapter.sol";
 import {RouterLogic} from "../src/RouterLogic.sol";
 import {PackedRouteHelper} from "./PackedRouteHelper.sol";
 
@@ -20,13 +21,13 @@ contract RouterIntegrationByRealTest is Test, PackedRouteHelper {
     address public LB2_USDE_MNT = 0x5d54d430D1FD9425976147318E6080479bffC16D;
     address public LB2_MNT_USDT = 0xf6C9020c9E915808481757779EDB53DACEaE2415;
 
-    address public BYREAL_MNT_USDT = 0x4304e855795aA4EB0c956b36e30697521292fc3B;
+    address public BYREAL_MNT_USDT = 0xB97C6E980f6e57785D7ef0BE394F33618D44D641;
 
     address alice = makeAddr("Alice");
     address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
-        vm.createSelectFork("https://rpc.mantle.xyz", 86233568);
+        vm.createSelectFork("https://rpc.mantle.xyz", 86371508);
 
         router = new Router(WMNT, address(this));
         logic = new RouterLogic(address(router), address(0), address(0), WMNT, feeReceiver, 0.15e4);
@@ -109,74 +110,33 @@ contract RouterIntegrationByRealTest is Test, PackedRouteHelper {
         assertEq(IERC20(USDT).balanceOf(alice), totalOut, "test_SwapExactInTokenToToken::10");
     }
 
-    // function test_SwapExactOutTokenToToken() public {
-    //     uint128 amountOut = 1000e18;
-    //     uint256 maxAmountIn = 1200e6;
+    function test_SwapExactOutTokenToToken() public {
+        uint128 amountOut = 1000e18;
+        uint256 maxAmountIn = 1200e6;
 
-    //     vm.deal(alice, 0.1e18);
-    //     deal(USDT, alice, maxAmountIn);
+        vm.deal(alice, 0.1e18);
+        deal(USDT, alice, maxAmountIn);
 
-    //     (bytes memory route, uint256 ptr) = _createRoutes(3, 3);
+        (bytes memory route, uint256 ptr) = _createRoutes(3, 3);
 
-    //     ptr = _setIsTransferTaxToken(route, ptr, false);
-    //     ptr = _setToken(route, ptr, USDT);
-    //     ptr = _setToken(route, ptr, WMNT);
-    //     ptr = _setToken(route, ptr, USDE);
+        ptr = _setIsTransferTaxToken(route, ptr, false);
+        ptr = _setToken(route, ptr, USDT);
+        ptr = _setToken(route, ptr, WMNT);
+        ptr = _setToken(route, ptr, USDE);
 
-    //     ptr = _setRoute(route, ptr, USDT, WMNT, BYREAL_MNT_USDT, 1e4, BYREAL_ID | ONE_FOR_ZERO | CALLBACK);
-    //     ptr = _setRoute(route, ptr, USDT, WMNT, LB2_MNT_USDT, 0.3e4, LB12_ID | ONE_FOR_ZERO);
-    //     ptr = _setRoute(route, ptr, WMNT, USDE, LB2_USDE_MNT, 1e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, USDT, WMNT, BYREAL_MNT_USDT, 1e4, BYREAL_ID | ONE_FOR_ZERO | CALLBACK);
+        ptr = _setRoute(route, ptr, USDT, WMNT, LB2_MNT_USDT, 0.3e4, LB12_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WMNT, USDE, LB2_USDE_MNT, 1e4, LB12_ID | ONE_FOR_ZERO);
 
-    //     vm.startPrank(alice);
-    //     IERC20(USDT).approve(address(router), maxAmountIn);
+        vm.startPrank(alice);
+        IERC20(USDT).approve(address(router), maxAmountIn);
 
-    //     uint256 expectedIn;
-    //     {
-    //         bytes[] memory multiRoutes = new bytes[](3);
-
-    //         multiRoutes[0] = route;
-    //         multiRoutes[1] = route;
-
-    //         (bool success, bytes memory data) = address(router).call{value: 0.1e18}(
-    //             abi.encodeWithSelector(
-    //                 IRouter.simulate.selector,
-    //                 logic,
-    //                 USDT,
-    //                 USDE,
-    //                 type(uint128).max,
-    //                 amountOut,
-    //                 alice,
-    //                 false,
-    //                 multiRoutes
-    //             )
-    //         );
-    //         assertFalse(success, "test_SwapExactOutTokenToToken::1");
-
-    //         uint256[] memory values;
-
-    //         assembly ("memory-safe") {
-    //             values := add(data, 68)
-    //         }
-
-    //         assertEq(values.length, 3, "test_SwapExactOutTokenToToken::2");
-    //         assertEq(values[0], values[1], "test_SwapExactOutTokenToToken::3");
-    //         assertEq(values[2], type(uint256).max, "test_SwapExactOutTokenToToken::4");
-
-    //         expectedIn = values[0];
-    //     }
-
-    //     (uint256 totalIn, uint256 totalOut) = router.swapExactOut{value: 0.1e18}(
-    //         address(logic), USDT, USDE, amountOut, maxAmountIn, alice, block.timestamp, route
-    //     );
-    //     vm.stopPrank();
-
-    //     assertLe(totalIn, maxAmountIn, "test_SwapExactOutTokenToToken::5");
-    //     assertEq(totalIn, expectedIn, "test_SwapExactOutTokenToToken::6");
-    //     assertGe(totalOut, amountOut, "test_SwapExactOutTokenToToken::7");
-    //     assertEq(alice.balance, 0.1e18, "test_SwapExactOutTokenToToken::8");
-    //     assertEq(IERC20(USDT).balanceOf(alice), maxAmountIn - totalIn, "test_SwapExactOutTokenToToken::9");
-    //     assertEq(IERC20(USDE).balanceOf(alice), amountOut, "test_SwapExactOutTokenToToken::10");
-    // }
+        vm.expectRevert(RouterAdapter.RouterAdapter__InvalidId.selector);
+        router.swapExactOut{
+            value: 0.1e18
+        }(address(logic), USDT, USDE, amountOut, maxAmountIn, alice, block.timestamp, route);
+        vm.stopPrank();
+    }
 
     function test_SwapExactInNativeToToken() public {
         uint128 amountIn = 1e18;

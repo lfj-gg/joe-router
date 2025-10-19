@@ -860,30 +860,25 @@ library PairInteraction {
      * - The pair must have code.
      * - The return data must be exactly 32 bytes.
      */
-    function getSwapInOrOutByReal(address pair, bool isSwapIn, uint256 amount, address token)
+    function getSwapInByReal(address pair, uint256 amountIn, address tokenIn)
         internal
         view
-        returns (uint256 result)
+        returns (uint256 amountOut)
     {
         uint256 returnDataSize;
         uint256 success;
         assembly ("memory-safe") {
             let m0x40 := mload(0x40)
 
-            // 0x1125f13f - getAmountIn(uint256 amountOut,address tokenOut)
-            // 0xf140a35a - getAmountOut(uint256 amountIn,address tokenIn)
-            // 0x1125f13f ^ 0xf140a35a = 0xe0655265
-            // If isSwapIn > 0 returns (0 * 0xe0655265) ^ 0x1125f13f = 0x1125f13f (getAmountIn)
-            // If isSwapIn == 0 returns (1 * 0xe0655265) ^ 0x1125f13f = 0xf140a35a (getAmountOut)
-            mstore(0, xor(mul(iszero(isSwapIn), 0xe0655265), 0x1125f13f))
-            mstore(32, amount)
-            mstore(64, token)
+            mstore(0, 0x1125f13f) // getAmountIn(uint256,address)
+            mstore(32, amountIn)
+            mstore(64, tokenIn)
 
             success := staticcall(gas(), pair, 28, 68, 0, 32)
 
             returnDataSize := returndatasize()
 
-            result := mload(0)
+            amountOut := mload(0)
 
             mstore(0x40, m0x40)
         }
@@ -900,7 +895,11 @@ library PairInteraction {
      * Requirements:
      * - The call must succeed.
      */
-    function swapByReal(address pair, address recipient, uint256 amountIn, address tokenIn) internal {
+    function swapByReal(address pair, address recipient, uint256 amountIn, address tokenIn)
+        internal
+        returns (uint256 amountOut)
+    {
+        uint256 returnDataSize;
         uint256 success;
         assembly ("memory-safe") {
             let ptr := mload(0x40)
@@ -911,11 +910,17 @@ library PairInteraction {
             mstore(add(ptr, 96), amountIn)
             mstore(add(ptr, 128), recipient)
 
-            success := call(gas(), pair, 0, add(ptr, 28), 132, 0, 0)
+            success := call(gas(), pair, 0, add(ptr, 28), 132, 0, 32)
+
+            returnDataSize := returndatasize()
+
+            amountOut := mload(0)
 
             mstore(0x40, add(ptr, 160))
         }
         _bubbleRevert(success);
+
+        if (returnDataSize != 32) revert PairInteraction__InvalidReturnData();
     }
 
     /**
