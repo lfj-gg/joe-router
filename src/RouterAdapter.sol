@@ -336,7 +336,7 @@ abstract contract RouterAdapter {
         returns (uint256)
     {
         address tokenOut = PackedRoute.token(route, PackedRoute.tokenOutId(value));
-        return PairInteraction.getSwapInOrOutByReal(pair, true, amountOut, tokenOut);
+        return PairInteraction.getSwapInByReal(pair, amountOut, tokenOut);
     }
 
     /**
@@ -346,8 +346,7 @@ abstract contract RouterAdapter {
         internal
         returns (uint256 amountOut)
     {
-        amountOut = PairInteraction.getSwapInOrOutByReal(pair, false, amountIn, tokenIn);
         TokenLib.forceApprove(tokenIn, pair, amountIn);
-        PairInteraction.swapByReal(pair, recipient, amountIn, tokenIn);
+        return PairInteraction.swapByReal(pair, recipient, amountIn, tokenIn);
     }
 }
