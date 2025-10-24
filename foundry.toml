@@ -13,5 +13,6 @@ wrap_comments = true
 
 [lint]
 exclude_lints = ["mixed-case-function", "mixed-case-variable"]
+ignore = ["./test/**/*.t.sol"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
