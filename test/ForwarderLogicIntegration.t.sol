@@ -149,10 +149,7 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_ODOS_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_ODOS_Native::2");
 
-        IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
@@ -251,10 +248,7 @@ contract ForwarderLogicIntegrationTest is Test {
         );
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_ODOS_NativeWithFeeIn::4");
 
-        IRouter(router)
-        .swapExactIn{
-            value: avaxAmountWithFee
-        }(
+        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
             address(forwarder),
             AVAX,
             USDC,
@@ -363,10 +357,7 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_ODOS_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
@@ -450,10 +441,7 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_OKX_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_OKX_Native::2");
 
-        IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
@@ -550,10 +538,7 @@ contract ForwarderLogicIntegrationTest is Test {
         );
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_OKX_NativeWithFeeIn::4");
 
-        IRouter(router)
-        .swapExactIn{
-            value: avaxAmountWithFee
-        }(
+        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
             address(forwarder),
             AVAX,
             USDC,
@@ -660,10 +645,7 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_OKX_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
@@ -747,10 +729,7 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(address(this)), 0, "test_JAR_Native::1");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_JAR_Native::2");
 
-        IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
@@ -847,10 +826,7 @@ contract ForwarderLogicIntegrationTest is Test {
         assertEq(IERC20(USDC).balanceOf(feeReceiver), protocolFeeAmount, "test_JAR_NativeWithFeeIn::3");
         assertGe(alice.balance, AVAX_AMOUNT / 2, "test_JAR_NativeWithFeeIn::4");
 
-        IRouter(router)
-        .swapExactIn{
-            value: avaxAmountWithFee
-        }(
+        IRouter(router).swapExactIn{value: avaxAmountWithFee}(
             address(forwarder),
             AVAX,
             USDC,
@@ -957,10 +933,7 @@ contract ForwarderLogicIntegrationTest is Test {
             "test_JAR_NativeWithFeeOut::5"
         );
 
-        (, uint256 usdcAmountOut) = IRouter(router)
-        .swapExactIn{
-            value: AVAX_AMOUNT
-        }(
+        (, uint256 usdcAmountOut) = IRouter(router).swapExactIn{value: AVAX_AMOUNT}(
             address(forwarder),
             AVAX,
             USDC,
