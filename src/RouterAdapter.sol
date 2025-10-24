@@ -74,7 +74,7 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The id of the flags must be valid and not the FEE_ID.
      */
-    function _getAmountIn(bytes calldata route, bytes32 value, uint256 amountOut) internal returns (uint256 amountIn) {
+    function _getAmountIn(bytes calldata, bytes32 value, uint256 amountOut) internal returns (uint256 amountIn) {
         address pair = PackedRoute.pair(value);
         uint256 flags = PackedRoute.flags(value);
 
@@ -86,7 +86,7 @@ abstract contract RouterAdapter {
         else if (id == Flags.UNISWAP_V3_ID) amountIn = _getAmountInUV3(pair, flags, amountOut);
         else if (id == Flags.LFJ_TOKEN_MILL_ID) amountIn = _getAmountInTM(pair, flags, amountOut);
         else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountIn = _getAmountInTMV2(pair, flags, amountOut);
-        else if (id == Flags.UNISWAP_V4_ID) amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
+        // else if (id == Flags.UNISWAP_V4_ID) amountIn = _getAmountInUV4(route, value, pair, flags, amountOut);
         // Not supported yet because of a rounding issue in the getAmountIn vs getAmountOut functions
         // else if (id == Flags.BYREAL_ID) amountIn = _getSwapInByReal(route, pair, amountOut, value);
         else revert RouterAdapter__InvalidId();
@@ -98,14 +98,10 @@ abstract contract RouterAdapter {
      * Requirements:
      * - The id of the flags must be valid and not the FEE_ID.
      */
-    function _swap(
-        bytes calldata route,
-        bytes32 value,
-        address tokenIn,
-        uint256 amountIn,
-        address recipient,
-        uint256 flags
-    ) internal returns (uint256 amountOut) {
+    function _swap(bytes calldata, bytes32 value, address tokenIn, uint256 amountIn, address recipient, uint256 flags)
+        internal
+        returns (uint256 amountOut)
+    {
         address pair = PackedRoute.pair(value);
         uint256 id = Flags.id(flags);
 
@@ -115,7 +111,7 @@ abstract contract RouterAdapter {
         else if (id == Flags.UNISWAP_V3_ID) amountOut = _swapUV3(pair, flags, recipient, amountIn, tokenIn);
         else if (id == Flags.LFJ_TOKEN_MILL_ID) amountOut = _swapTM(pair, flags, recipient, amountIn);
         else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountOut = _swapTMV2(pair, flags, recipient, amountIn);
-        else if (id == Flags.UNISWAP_V4_ID) amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
+        // else if (id == Flags.UNISWAP_V4_ID) amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
         else if (id == Flags.BYREAL_ID) amountOut = _swapByReal(pair, recipient, amountIn, tokenIn);
         else revert RouterAdapter__InvalidId();
     }
