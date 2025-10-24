@@ -159,9 +159,9 @@ contract RouterTest is Test {
         payable(alice).transfer(amountIn);
 
         vm.startPrank(alice);
-        router.swapExactIn{
-            value: amountIn
-        }(address(routerLogic), address(0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route);
+        router.swapExactIn{value: amountIn}(
+            address(routerLogic), address(0), address(token1), amountIn, amountOutMin, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(wnative.balanceOf(address(routerLogic)), amountIn, "test_Fuzz_SwapExactInNativeToToken::1");
@@ -260,9 +260,9 @@ contract RouterTest is Test {
         payable(alice).transfer(amountInMax);
 
         vm.startPrank(alice);
-        router.swapExactOut{
-            value: amountInMax
-        }(address(routerLogic), address(0), address(token1), amountOut, amountInMax, bob, block.timestamp, route);
+        router.swapExactOut{value: amountInMax}(
+            address(routerLogic), address(0), address(token1), amountOut, amountInMax, bob, block.timestamp, route
+        );
         vm.stopPrank();
 
         assertEq(wnative.balanceOf(address(routerLogic)), amountInMax, "test_Fuzz_SwapExactOutNativeToToken::1");
@@ -348,9 +348,9 @@ contract RouterTest is Test {
         );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactIn{
-            value: 1
-        }(address(routerLogic), address(0), address(0), 1, 1, alice, block.timestamp, new bytes(0));
+        router.swapExactIn{value: 1}(
+            address(routerLogic), address(0), address(0), 1, 1, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
         router.swapExactIn(
@@ -358,9 +358,9 @@ contract RouterTest is Test {
         );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactIn{
-            value: 1
-        }(address(routerLogic), address(0), address(wnative), 1, 1, alice, block.timestamp, new bytes(0));
+        router.swapExactIn{value: 1}(
+            address(routerLogic), address(0), address(wnative), 1, 1, alice, block.timestamp, new bytes(0)
+        );
 
         token0.mint(alice, 10e18);
 
@@ -413,9 +413,9 @@ contract RouterTest is Test {
         );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactOut{
-            value: 1
-        }(address(routerLogic), address(0), address(0), 1, 1, alice, block.timestamp, new bytes(0));
+        router.swapExactOut{value: 1}(
+            address(routerLogic), address(0), address(0), 1, 1, alice, block.timestamp, new bytes(0)
+        );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
         router.swapExactOut(
@@ -423,9 +423,9 @@ contract RouterTest is Test {
         );
 
         vm.expectRevert(IRouter.Router__IdenticalTokens.selector);
-        router.swapExactOut{
-            value: 1
-        }(address(routerLogic), address(0), address(wnative), 1, 1, alice, block.timestamp, new bytes(0));
+        router.swapExactOut{value: 1}(
+            address(routerLogic), address(0), address(wnative), 1, 1, alice, block.timestamp, new bytes(0)
+        );
 
         token0.mint(alice, 10e18);
 
