@@ -13,19 +13,19 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
     Router public router;
     RouterLogic public logic;
 
-    address public WETH = 0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37;
-    address public WMON = 0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701;
-    address public USDC = 0xf817257fed379853cDe0fa4F97AB987181B1E5Ea;
+    address public WETH = 0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242;
+    address public WMON = 0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A;
+    address public USDC = 0x754704Bc059F8C67012fEd69BC8A327a5aafb603;
 
-    address public PSV2_MON_WETH = 0xaFb3763a2C9576996037CabeE2517c09a1218DA2;
+    address public PSV3_MON_WETH = 0xB02793FE655C1169A8699B4ee462F8Ac9c75E402;
 
-    address public PSV3_MON_USDC = 0xb39E5Fa485CAC152d9e62d3A20E6a6efb3F9DA69;
+    address public PSV3_MON_USDC = 0x63e48B725540A3Db24ACF6682a29f877808C53F2;
 
     address alice = makeAddr("Alice");
     address feeReceiver = makeAddr("FeeReceiver");
 
     function setUp() public {
-        vm.createSelectFork("https://testnet-rpc.monad.xyz");
+        vm.createSelectFork("https://rpc1.monad.xyz", 42520931);
 
         router = new Router(WMON, address(this));
         logic = new RouterLogic(address(router), address(0), address(0), WMON, feeReceiver, 0.15e4);
@@ -37,7 +37,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         vm.label(WMON, "WMON");
         vm.label(WETH, "WETH");
         vm.label(USDC, "USDC");
-        vm.label(PSV2_MON_WETH, "PSV2_MON_WETH");
+        vm.label(PSV3_MON_WETH, "PSV3_MON_WETH");
         vm.label(PSV3_MON_USDC, "PSV3_MON_USDC");
     }
 
@@ -54,7 +54,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, WMON);
         ptr = _setToken(route, ptr, USDC);
 
-        ptr = _setRoute(route, ptr, WETH, WMON, PSV2_MON_WETH, 1e4, TJ1_ID | ONE_FOR_ZERO);
+        ptr = _setRoute(route, ptr, WETH, WMON, PSV3_MON_WETH, 1e4, UV3ID | ONE_FOR_ZERO | CALLBACK);
         ptr = _setRoute(route, ptr, WMON, USDC, PSV3_MON_USDC, 1e4, UV3ID | ZERO_FOR_ONE | CALLBACK);
 
         vm.startPrank(alice);
@@ -114,7 +114,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
         ptr = _setToken(route, ptr, WETH);
 
         ptr = _setRoute(route, ptr, USDC, WMON, PSV3_MON_USDC, 1.0e4, UV3ID | ONE_FOR_ZERO | CALLBACK);
-        ptr = _setRoute(route, ptr, WMON, WETH, PSV2_MON_WETH, 1.0e4, TJ1_ID | ZERO_FOR_ONE);
+        ptr = _setRoute(route, ptr, WMON, WETH, PSV3_MON_WETH, 1.0e4, UV3ID | ZERO_FOR_ONE | CALLBACK);
 
         vm.startPrank(alice);
         IERC20(USDC).approve(address(router), maxAmountIn);
@@ -193,7 +193,7 @@ contract RouterIntegrationPancakeSwapV3Test is Test, PackedRouteHelper {
 
     function test_SwapExactOutNativeToToken() public {
         uint128 amountOut = 1e6;
-        uint256 maxAmountIn = 1e18;
+        uint256 maxAmountIn = 100e18;
 
         vm.deal(alice, maxAmountIn + 0.2e18);
 
