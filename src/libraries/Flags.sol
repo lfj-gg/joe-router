@@ -32,6 +32,7 @@ library Flags {
     uint256 internal constant LFJ_TOKEN_MILL_V2_ID = 6 << ID_OFFSET;
     uint256 internal constant UNISWAP_V4_ID = 7 << ID_OFFSET;
     uint256 internal constant BYREAL_ID = 8 << ID_OFFSET;
+    uint256 internal constant POE_ID = 9 << ID_OFFSET;
 
     /// forge-lint: disable-end(incorrect-shift)
 

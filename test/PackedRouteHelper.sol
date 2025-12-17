@@ -16,6 +16,7 @@ abstract contract PackedRouteHelper {
     uint16 public constant TMV2_ID = uint16(Flags.LFJ_TOKEN_MILL_V2_ID);
     uint16 public constant UV4_ID = uint16(Flags.UNISWAP_V4_ID);
     uint16 public constant BYREAL_ID = uint16(Flags.BYREAL_ID);
+    uint16 public constant POE_ID = uint16(Flags.POE_ID);
 
     // [fee: 3][tickSpacing: 3][nativeFlag: 1][hooks: 20][hookData length: 3] (3 + 3 + 1 + 20 + 3 = 30)
     uint16 public constant UNISWAP_V4_EXTRA_DATA_SIZE = 30;
