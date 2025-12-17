@@ -21,6 +21,8 @@ library PairInteraction {
     uint256 internal constant MIN_SWAP_SQRT_RATIO = 4295128739 + 1;
     uint256 internal constant MAX_SWAP_SQRT_RATIO = 1461446703485210103287273052203988822378723970342 - 1;
 
+    bytes4 internal constant POE_SWAP_CALLBACK_SELECTOR = 0xfa483e72;
+
     /**
      * @dev Returns the ordered reserves of a Uniswap V2 pair.
      * If ordered is true, the reserves are returned as (reserve0, reserve1), otherwise as (reserve1, reserve0).
@@ -921,6 +923,55 @@ library PairInteraction {
         _bubbleRevert(success);
 
         if (returnDataSize != 32) revert PairInteraction__InvalidReturnData();
+    }
+
+    /**
+     * @dev Swaps tokenIn for tokenOut in a POE pair.
+     *
+     * Requirements:
+     * - The call must succeed.
+     * - The pair must have code.
+     * - The return data must be at least 64 bytes.
+     */
+    function swapPOE(address pair, address recipient, uint256 amountIn, bool swapForY, address tokenIn)
+        internal
+        returns (uint256 actualAmountOut, uint256 actualAmountIn, uint256 expectedHash)
+    {
+        uint256 returnDataSize;
+        uint256 success;
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+
+            mstore(ptr, 0x80c2c6ef) // swap(address,bool,uint256,bytes)
+            mstore(add(ptr, 32), recipient)
+            mstore(add(ptr, 64), swapForY)
+            mstore(add(ptr, 96), amountIn)
+            mstore(add(ptr, 128), 128)
+            mstore(add(ptr, 160), 32)
+            mstore(add(ptr, 192), tokenIn)
+
+            success := call(gas(), pair, 0, add(ptr, 28), 196, ptr, 64)
+
+            returnDataSize := returndatasize()
+
+            mstore(add(ptr, 64), tokenIn)
+            expectedHash := keccak256(ptr, 96)
+
+            switch swapForY
+            case 0 {
+                actualAmountOut := mload(ptr)
+                actualAmountIn := mload(add(ptr, 32))
+            }
+            case 1 {
+                actualAmountIn := mload(ptr)
+                actualAmountOut := mload(add(ptr, 32))
+            }
+
+            actualAmountOut := sub(0, actualAmountOut) // Invert the sign
+        }
+        _bubbleRevert(success);
+
+        if (returnDataSize < 64) revert PairInteraction__InvalidReturnData();
     }
 
     /**

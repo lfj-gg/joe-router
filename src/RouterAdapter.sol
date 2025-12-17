@@ -60,6 +60,8 @@ abstract contract RouterAdapter {
             return _uniswapV3SwapCallback(data);
         } else if (id == Flags.UNISWAP_V4_ID && msg.sender == UNISWAP_V4_MANAGER) {
             return _uniswapV4UnlockCallback(data, account);
+        } else if (id == Flags.POE_ID && msg.sender == account) {
+            return _poeSwapCallback(data);
         }
 
         assembly ("memory-safe") {
@@ -113,6 +115,7 @@ abstract contract RouterAdapter {
         else if (id == Flags.LFJ_TOKEN_MILL_V2_ID) amountOut = _swapTMV2(pair, flags, recipient, amountIn);
         // else if (id == Flags.UNISWAP_V4_ID) amountOut = _swapUV4(route, value, pair, flags, recipient, amountIn);
         else if (id == Flags.BYREAL_ID) amountOut = _swapByReal(pair, recipient, amountIn, tokenIn);
+        else if (id == Flags.POE_ID) amountOut = _swapPoe(pair, flags, recipient, amountIn, tokenIn);
         else revert RouterAdapter__InvalidId();
     }
 
@@ -323,6 +326,8 @@ abstract contract RouterAdapter {
         return abi.encode(0x20, 0x40, delta0, delta1);
     }
 
+    /* ByReal */
+
     /**
      * @dev Returns the amount of tokenIn needed to get amountOut from the ByReal pair.
      */
@@ -344,5 +349,43 @@ abstract contract RouterAdapter {
     {
         TokenLib.forceApprove(tokenIn, pair, amountIn);
         return PairInteraction.swapByReal(pair, recipient, amountIn, tokenIn);
+    }
+
+    /* Poe */
+
+    /**
+     * @dev Swaps tokens from the sender to the recipient using the Poe pair.
+     */
+    function _swapPoe(address pair, uint256 flags, address recipient, uint256 amountIn, address tokenIn)
+        internal
+        returns (uint256)
+    {
+        _callbackData = (uint256(uint160(pair)) << 96) | Flags.POE_ID;
+
+        (uint256 amountOut, uint256 actualAmountIn, uint256 hash) =
+            PairInteraction.swapPOE(pair, recipient, amountIn, Flags.zeroForOne(flags), tokenIn);
+
+        if (_callbackData != hash) revert RouterAdapter__UnexpectedCallback();
+        if (actualAmountIn != amountIn) revert RouterAdapter__UnexpectedAmountIn();
+
+        _callbackData = 0xdead;
+
+        return amountOut;
+    }
+
+    /**
+     * @dev Callback function for Poe swaps.
+     *
+     * Requirements:
+     * - The caller must be the callback address.
+     */
+    function _poeSwapCallback(bytes calldata data) internal returns (bytes memory) {
+        (int256 amount0Delta, int256 amount1Delta, address token) = PairInteraction.decodeUV3CallbackData(data);
+
+        _callbackData = PairInteraction.hashUV3(amount0Delta, amount1Delta, token);
+
+        TokenLib.transfer(token, msg.sender, uint256(amount0Delta > 0 ? amount0Delta : amount1Delta));
+
+        return abi.encode(PairInteraction.POE_SWAP_CALLBACK_SELECTOR);
     }
 }
