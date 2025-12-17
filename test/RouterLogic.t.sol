@@ -364,7 +364,7 @@ contract RouterLogicTest is Test, PackedRouteHelper {
     event Log(uint256 val0, uint256 val1, uint256 val2, uint256 val3);
 
     function test_Fuzz_Revert_InvalidId(uint16 id) public {
-        uint16 invalidId = uint16(bound(id, (BYREAL_ID >> 8) + 1, type(uint8).max) << 8);
+        uint16 invalidId = uint16(bound(id, (POE_ID >> 8) + 1, type(uint8).max) << 8);
 
         (bytes memory route, uint256 ptr) = _createRoutes(2, 1);
 
